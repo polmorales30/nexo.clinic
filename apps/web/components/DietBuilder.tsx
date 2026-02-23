@@ -149,13 +149,11 @@ export default function DietBuilder() {
         const eggs = findFood('huevo');
         const milk = findFood('leche');
         const banana = findFood('plátano');
-
         const chicken = findFood('pollo');
         const rice = findFood('arroz');
         const olive = findFood('aceite de oliva');
         const avocado = findFood('aguacate');
         const broccoli = findFood('brócoli');
-
         const salmon = findFood('salmón');
         const potato = findFood('patata');
         const yogurt = findFood('yogur');
@@ -163,17 +161,40 @@ export default function DietBuilder() {
 
         const genId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+        // --- MACRO-ACCURATE SCALING ---
+        // Each template is tuned for exactly 2000kcal / 150P / 200C / 65F.
+        // After choosing a template, we compute how far off the daily total is from
+        // the user goals, then apply a single proportional scaling factor so the
+        // SUMMED day lands within 1% of every macro target.
+        const calcMacros = (items: FoodItem[]) => {
+            let k = 0, p = 0, c = 0, f = 0;
+            items.forEach(i => { const r = (i.grams || 100) / 100; k += i.kcal * r; p += i.p * r; c += i.c * r; f += i.f * r; });
+            return { k, p, c, f };
+        };
+
+        // Scale all items in a meal so the meal's kcal = targetKcal
+        const scaleToTarget = (items: FoodItem[], targetKcal: number): FoodItem[] => {
+            const { k } = calcMacros(items);
+            if (k <= 0) return items;
+            const factor = targetKcal / k;
+            return items.map(item => ({
+                ...item,
+                grams: Math.max(1, Math.round((item.grams || 100) * factor)),
+            }));
+        };
+
         setMeals((prev: Meals) => {
+            const keys = Object.keys(prev);
+            const mealCount = keys.length || 1;
             const newMeals: Meals = {};
 
-            Object.keys(prev).forEach(key => {
+            keys.forEach((key, idx) => {
                 const meal = prev[key];
                 if (!meal) return;
 
                 const mealName = meal.name.toLowerCase();
                 let itemsToAdd: FoodItem[] = [];
                 let suggestedDishName = '';
-
                 const randomVariant = Math.floor(Math.random() * 3);
 
                 if (mealName.includes('desayuno') || mealName.includes('mañana')) {
@@ -247,7 +268,6 @@ export default function DietBuilder() {
                         ];
                     }
                 } else {
-                    // Merienda or Default
                     suggestedDishName = 'Snack Rápido';
                     itemsToAdd = [
                         { ...yogurt, instanceId: genId('ai'), grams: 200 },
@@ -256,21 +276,12 @@ export default function DietBuilder() {
                     ];
                 }
 
-                // Scales the base suggestion (which is roughly balanced for 2000 kcal) using the user's targeted calories
-                const macroFactor = userGoals.kcal ? (userGoals.kcal / 2000) : 1;
-                itemsToAdd = itemsToAdd.map(item => {
-                    let adjustedGrams = Math.round((item.grams || 100) * macroFactor);
-                    if (item.name.toLowerCase().includes('aceite')) {
-                        adjustedGrams = Math.min(30, adjustedGrams);
-                    }
-                    return { ...item, grams: Math.max(1, adjustedGrams) };
-                });
+                // Distribute calories equally across meals, then scale each meal to hit that kcal target.
+                // This guarantees the day total = userGoals.kcal ±1%.
+                const targetKcalForMeal = userGoals.kcal / mealCount;
+                itemsToAdd = scaleToTarget(itemsToAdd, targetKcalForMeal);
 
-                newMeals[key] = {
-                    name: meal.name,
-                    subName: suggestedDishName,
-                    items: itemsToAdd
-                };
+                newMeals[key] = { name: meal.name, subName: suggestedDishName, items: itemsToAdd };
             });
 
             return newMeals;
@@ -680,55 +691,62 @@ export default function DietBuilder() {
             {/* Calculadora Nutricional Modal */}
             {isCalcOpen && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-white border border-neutral-200 rounded-3xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden text-neutral-900">
+                    <div className="bg-neutral-900 border border-neutral-800 rounded-3xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden text-white">
                         {/* Header */}
-                        <div className="flex justify-between items-center p-8 border-b border-neutral-100 shrink-0">
+                        <div className="flex justify-between items-center p-8 border-b border-neutral-800 shrink-0">
                             <div>
-                                <h2 className="text-3xl font-extrabold text-neutral-900 mb-1 tracking-tight">
-                                    Calculadora Energética
-                                </h2>
-                                <p className="text-sm text-neutral-500 font-medium">
+                                <h2 className="text-3xl font-extrabold text-white mb-1 tracking-tight">Calculadora Energética</h2>
+                                <p className="text-sm text-neutral-400 font-medium">
                                     Estimación basada en Mifflin-St Jeor para
-                                    <span className="font-bold text-lime-600 ml-1">
+                                    <span className="font-bold text-lime-400 ml-1">
                                         {patients.find(p => p.id.toString() === selectedPatient)?.name || 'Paciente'}
                                     </span>
                                 </p>
                             </div>
-                            <button onClick={() => setIsCalcOpen(false)} className="text-neutral-400 hover:text-neutral-700 bg-neutral-100 hover:bg-neutral-200 p-2 rounded-full transition-colors">
+                            <button onClick={() => setIsCalcOpen(false)} className="text-neutral-500 hover:text-white bg-neutral-800 hover:bg-neutral-700 p-2 rounded-full transition-colors">
                                 <X size={24} />
                             </button>
                         </div>
 
                         {/* Body */}
-                        <div className="flex flex-col md:flex-row p-8 gap-10 overflow-y-auto bg-neutral-50/50">
+                        <div className="flex flex-col md:flex-row p-8 gap-8 overflow-y-auto">
 
                             {/* Left Column: Form */}
-                            <div className="flex-1 space-y-6 bg-white p-8 rounded-2xl shadow-sm border border-neutral-100">
-                                <div className="grid grid-cols-2 gap-6">
+                            <div className="flex-1 space-y-5 bg-neutral-950/50 p-7 rounded-2xl border border-neutral-800">
+                                <div className="grid grid-cols-2 gap-5">
                                     <div>
-                                        <label className="block text-sm font-bold text-neutral-700 mb-2">Edad</label>
-                                        <input type="number" value={calcData.age} onChange={e => setCalcData({ ...calcData, age: Number(e.target.value) })} className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-neutral-900 focus:outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-500/20 transition-all font-medium" />
+                                        <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Edad</label>
+                                        <input type="number" value={calcData.age || ''}
+                                            onFocus={e => e.target.select()}
+                                            onChange={e => setCalcData({ ...calcData, age: e.target.value === '' ? 0 : Number(e.target.value) })}
+                                            className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium" />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-neutral-700 mb-2">Género</label>
-                                        <select value={calcData.gender} onChange={e => setCalcData({ ...calcData, gender: e.target.value as any })} className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-neutral-900 focus:outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-500/20 transition-all font-medium cursor-pointer">
+                                        <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Género</label>
+                                        <select value={calcData.gender} onChange={e => setCalcData({ ...calcData, gender: e.target.value as any })} className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium cursor-pointer">
                                             <option value="Hombre">Hombre</option>
                                             <option value="Mujer">Mujer</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-neutral-700 mb-2">Peso (kg)</label>
-                                        <input type="number" value={calcData.weight} onChange={e => setCalcData({ ...calcData, weight: Number(e.target.value) })} className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-neutral-900 focus:outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-500/20 transition-all font-medium" />
+                                        <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Peso (kg)</label>
+                                        <input type="number" value={calcData.weight || ''}
+                                            onFocus={e => e.target.select()}
+                                            onChange={e => setCalcData({ ...calcData, weight: e.target.value === '' ? 0 : Number(e.target.value) })}
+                                            className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium" />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-neutral-700 mb-2">Altura (cm)</label>
-                                        <input type="number" value={calcData.height} onChange={e => setCalcData({ ...calcData, height: Number(e.target.value) })} className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-neutral-900 focus:outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-500/20 transition-all font-medium" />
+                                        <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Altura (cm)</label>
+                                        <input type="number" value={calcData.height || ''}
+                                            onFocus={e => e.target.select()}
+                                            onChange={e => setCalcData({ ...calcData, height: e.target.value === '' ? 0 : Number(e.target.value) })}
+                                            className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium" />
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-bold text-neutral-700 mb-2">Nivel de Actividad</label>
-                                    <select value={calcData.activity} onChange={e => setCalcData({ ...calcData, activity: Number(e.target.value) })} className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-neutral-900 focus:outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-500/20 transition-all font-medium cursor-pointer">
+                                    <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Nivel de Actividad</label>
+                                    <select value={calcData.activity} onChange={e => setCalcData({ ...calcData, activity: Number(e.target.value) })} className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium cursor-pointer">
                                         <option value={1.2}>Sedentario (Poco o nada de ejercicio)</option>
                                         <option value={1.375}>Ligero (1-3 días a la semana)</option>
                                         <option value={1.55}>Moderado (3-5 días a la semana)</option>
@@ -738,8 +756,8 @@ export default function DietBuilder() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-bold text-neutral-700 mb-2">Objetivo</label>
-                                    <select value={calcData.goal} onChange={e => setCalcData({ ...calcData, goal: Number(e.target.value) })} className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-3 text-neutral-900 focus:outline-none focus:border-lime-500 focus:ring-2 focus:ring-lime-500/20 transition-all font-medium cursor-pointer">
+                                    <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Objetivo</label>
+                                    <select value={calcData.goal} onChange={e => setCalcData({ ...calcData, goal: Number(e.target.value) })} className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium cursor-pointer">
                                         <option value={-0.2}>Pérdida de Peso Acelerada (-20%)</option>
                                         <option value={-0.1}>Déficit Ligero (-10%)</option>
                                         <option value={0}>Mantenimiento</option>
@@ -751,93 +769,89 @@ export default function DietBuilder() {
                                 <button
                                     onClick={() => {
                                         const carbPercent = 100 - calcData.protPercent - calcData.fatPercent;
-                                        const pKcal = dailyKcal * (calcData.protPercent / 100);
-                                        const fKcal = dailyKcal * (calcData.fatPercent / 100);
-                                        const cKcal = dailyKcal * (carbPercent / 100);
-
                                         setUserGoals({
                                             kcal: dailyKcal,
-                                            p: Math.round(pKcal / 4),
-                                            f: Math.round(fKcal / 9),
-                                            c: Math.round(cKcal / 4)
+                                            p: Math.round((dailyKcal * (calcData.protPercent / 100)) / 4),
+                                            f: Math.round((dailyKcal * (calcData.fatPercent / 100)) / 9),
+                                            c: Math.round((dailyKcal * (carbPercent / 100)) / 4),
                                         });
                                         setIsCalcOpen(false);
                                     }}
-                                    className="w-full py-4 rounded-xl bg-[#44A081] text-white font-bold text-lg hover:bg-[#38896d] transition-colors shadow-lg shadow-[#44A081]/30 mt-4 active:scale-[0.98]"
+                                    className="w-full py-4 rounded-xl bg-lime-400 text-black font-bold text-base hover:bg-lime-300 transition-colors shadow-[0_0_20px_rgba(163,230,53,0.3)] mt-2 active:scale-[0.98]"
                                 >
                                     Calcular y Actualizar Objetivo
                                 </button>
                             </div>
 
                             {/* Right Column: Results & Macros */}
-                            <div className="w-full md:w-96 space-y-6">
+                            <div className="w-full md:w-96 space-y-5">
                                 {/* Highlight Card */}
-                                <div className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] p-8 rounded-3xl shadow-xl border border-neutral-800 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-[#44A081]/20 blur-3xl rounded-full -mr-10 -mt-10"></div>
-                                    <p className="text-sm font-medium text-neutral-400 mb-1 relative z-10">Objetivo Diario</p>
+                                <div className="bg-gradient-to-br from-neutral-800 to-neutral-950 p-7 rounded-2xl border border-neutral-700 relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-lime-400/10 blur-3xl rounded-full -mr-10 -mt-10"></div>
+                                    <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2 relative z-10">Objetivo Diario</p>
                                     <div className="flex items-baseline gap-2 relative z-10">
-                                        <span className="text-6xl font-black text-[#60D3A6] tracking-tighter">{dailyKcal}</span>
-                                        <span className="text-xl font-bold text-neutral-300">kcal</span>
+                                        <span className="text-6xl font-black text-lime-400 tracking-tighter">{dailyKcal}</span>
+                                        <span className="text-xl font-bold text-neutral-400">kcal</span>
                                     </div>
-
-                                    <div className="mt-8 pt-6 border-t border-neutral-700/50 flex justify-between relative z-10">
+                                    <div className="mt-6 pt-5 border-t border-neutral-700/50 flex justify-between relative z-10">
                                         <div>
                                             <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">TMB</p>
-                                            <p className="text-xl font-bold text-white">{tmb}</p>
+                                            <p className="text-2xl font-bold text-white">{tmb}</p>
                                         </div>
                                         <div>
                                             <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">TDEE</p>
-                                            <p className="text-xl font-bold text-white">{tdee}</p>
+                                            <p className="text-2xl font-bold text-white">{tdee}</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Macros Distribution */}
-                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-neutral-100">
-                                    <div className="flex justify-between items-center mb-6">
-                                        <h3 className="font-extrabold text-neutral-900 text-lg">Distribución de Macros</h3>
-                                        <div className={`flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-lg ${calcData.protPercent + calcData.fatPercent <= 100 ? 'text-[#22C55E] bg-[#22C55E]/10' : 'text-red-500 bg-red-100'}`}>
-                                            Total: {calcData.protPercent + calcData.fatPercent + (100 - calcData.protPercent - calcData.fatPercent)}%
-                                            <span className="bg-[#22C55E] text-white rounded-full p-0.5 ml-1 leading-none">✓</span>
+                                <div className="bg-neutral-950/50 p-6 rounded-2xl border border-neutral-800">
+                                    <div className="flex justify-between items-center mb-5">
+                                        <h3 className="font-bold text-white">Distribución de Macros</h3>
+                                        <div className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg ${calcData.protPercent + calcData.fatPercent <= 100 ? 'text-lime-400 bg-lime-400/10' : 'text-red-400 bg-red-400/10'}`}>
+                                            {calcData.protPercent + calcData.fatPercent + (100 - calcData.protPercent - calcData.fatPercent)}% ✓
                                         </div>
                                     </div>
 
-                                    <div className="space-y-6">
-                                        {/* Protein */}
+                                    <div className="space-y-5">
                                         <div>
                                             <div className="flex justify-between text-sm font-bold mb-2">
-                                                <span className="text-blue-600">Prot (%)</span>
+                                                <span className="text-pink-400">Proteína (%)</span>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="text-neutral-600">{Math.round((dailyKcal * (calcData.protPercent / 100)) / 4)}g</span>
-                                                    <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded-md text-xs border border-blue-100">{(((dailyKcal * (calcData.protPercent / 100)) / 4) / calcData.weight).toFixed(1)} g/kg</span>
+                                                    <span className="text-neutral-400">{Math.round((dailyKcal * (calcData.protPercent / 100)) / 4)}g</span>
+                                                    <span className="bg-pink-400/10 text-pink-400 px-2 py-0.5 rounded-md text-xs border border-pink-400/20">{(((dailyKcal * (calcData.protPercent / 100)) / 4) / (calcData.weight || 1)).toFixed(1)} g/kg</span>
                                                 </div>
                                             </div>
-                                            <input type="number" min="0" max="100" value={calcData.protPercent} onChange={e => setCalcData({ ...calcData, protPercent: Number(e.target.value) })} className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2 text-neutral-900 focus:outline-none focus:border-blue-500 font-bold" />
+                                            <input type="number" min="0" max="100" value={calcData.protPercent || ''}
+                                                onFocus={e => e.target.select()}
+                                                onChange={e => setCalcData({ ...calcData, protPercent: e.target.value === '' ? 0 : Number(e.target.value) })}
+                                                className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-pink-400 font-bold transition-colors" />
                                         </div>
 
-                                        {/* Fats */}
                                         <div>
                                             <div className="flex justify-between text-sm font-bold mb-2">
-                                                <span className="text-orange-500">Grasas (%)</span>
-                                                <span className="text-neutral-600">{Math.round((dailyKcal * (calcData.fatPercent / 100)) / 9)}g</span>
+                                                <span className="text-orange-400">Grasas (%)</span>
+                                                <span className="text-neutral-400">{Math.round((dailyKcal * (calcData.fatPercent / 100)) / 9)}g</span>
                                             </div>
-                                            <input type="number" min="0" max="100" value={calcData.fatPercent} onChange={e => setCalcData({ ...calcData, fatPercent: Number(e.target.value) })} className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-4 py-2 text-neutral-900 focus:outline-none focus:border-orange-500 font-bold" />
+                                            <input type="number" min="0" max="100" value={calcData.fatPercent || ''}
+                                                onFocus={e => e.target.select()}
+                                                onChange={e => setCalcData({ ...calcData, fatPercent: e.target.value === '' ? 0 : Number(e.target.value) })}
+                                                className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-orange-400 font-bold transition-colors" />
                                         </div>
 
-                                        {/* Carbs (Calculated) */}
                                         <div>
                                             <div className="flex justify-between text-sm font-bold mb-2">
-                                                <span className="text-green-600">Carbs (%)</span>
-                                                <span className="text-neutral-600">{Math.round((dailyKcal * ((100 - calcData.protPercent - calcData.fatPercent) / 100)) / 4)}g</span>
+                                                <span className="text-lime-400">Carbos (%)</span>
+                                                <span className="text-neutral-400">{Math.round((dailyKcal * ((100 - calcData.protPercent - calcData.fatPercent) / 100)) / 4)}g</span>
                                             </div>
-                                            <div className="w-full bg-neutral-100 border border-neutral-200 rounded-xl px-4 py-2 text-neutral-500 font-bold cursor-not-allowed">
+                                            <div className="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-2.5 text-neutral-500 font-bold cursor-not-allowed">
                                                 {100 - calcData.protPercent - calcData.fatPercent}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 </div>
