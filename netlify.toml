@@ -1,7 +1,8 @@
 [build]
-  command = "npm run build --filter=web"
+  command = "npx turbo run build --filter=web"
   publish = "apps/web/.next"
   base = ""
 
 [build.environment]
   NODE_VERSION = "20"
+  NEXT_USE_NETLIFY_EDGE = "false"
