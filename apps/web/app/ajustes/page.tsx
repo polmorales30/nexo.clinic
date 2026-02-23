@@ -19,8 +19,7 @@ export default function AjustesPage() {
         avatar: ''
     });
 
-    // Security form
-    const [secForm, setSecForm] = useState({ username: '', newPassword: '', confirmPassword: '' });
+    const [secForm, setSecForm] = useState({ email: '', newPassword: '', confirmPassword: '' });
     const [showNewPass, setShowNewPass] = useState(false);
     const [showConfirmPass, setShowConfirmPass] = useState(false);
     const [secError, setSecError] = useState('');
@@ -31,12 +30,9 @@ export default function AjustesPage() {
         if (saved) {
             setFormData(JSON.parse(saved));
         }
-        const creds = localStorage.getItem('nexo-credentials');
-        if (creds) {
-            const parsed = JSON.parse(creds);
-            setSecForm(f => ({ ...f, username: parsed.username || '' }));
-        } else {
-            setSecForm(f => ({ ...f, username: currentUser || 'admin' }));
+        // Pre-fill the email from current Supabase user
+        if (currentUser) {
+            setSecForm(f => ({ ...f, email: currentUser }));
         }
     }, [currentUser]);
 
@@ -60,19 +56,19 @@ export default function AjustesPage() {
         }
     };
 
-    const handleSecuritySave = (e: React.FormEvent) => {
+    const handleSecuritySave = async (e: React.FormEvent) => {
         e.preventDefault();
         setSecError('');
-        if (!secForm.username.trim()) { setSecError('El nombre de usuario no puede estar vacío.'); return; }
+        if (!secForm.email.trim()) { setSecError('El email no puede estar vacío.'); return; }
         if (secForm.newPassword && secForm.newPassword !== secForm.confirmPassword) { setSecError('Las contraseñas no coinciden.'); return; }
         if (secForm.newPassword && secForm.newPassword.length < 6) { setSecError('La contraseña debe tener al menos 6 caracteres.'); return; }
-        const creds = localStorage.getItem('nexo-credentials');
-        const currentCreds = creds ? JSON.parse(creds) : { username: 'admin', password: 'nexo2025' };
-        changeCredentials(secForm.username.trim(), secForm.newPassword || currentCreds.password);
+        const { error } = await changeCredentials(secForm.email.trim(), secForm.newPassword);
+        if (error) { setSecError(error); return; }
         setSecSaved(true);
         setSecForm(f => ({ ...f, newPassword: '', confirmPassword: '' }));
         setTimeout(() => setSecSaved(false), 3000);
     };
+
 
     const navItems: { id: Section; icon: typeof User; label: string }[] = [
         { id: 'perfil', icon: User, label: 'Perfil Profesional' },
@@ -183,10 +179,10 @@ export default function AjustesPage() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-neutral-400 mb-2">Nombre de Usuario</label>
+                                    <label className="block text-sm font-medium text-neutral-400 mb-2">Email de Acceso</label>
                                     <div className="relative">
                                         <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" />
-                                        <input type="text" value={secForm.username} onChange={e => setSecForm({ ...secForm, username: e.target.value })} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-colors" />
+                                        <input type="email" value={secForm.email} onChange={e => setSecForm({ ...secForm, email: e.target.value })} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-colors" />
                                     </div>
                                 </div>
                                 <div>

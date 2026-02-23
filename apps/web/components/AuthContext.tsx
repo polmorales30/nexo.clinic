@@ -1,19 +1,16 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-
-const DEFAULT_USERNAME = "admin";
-const DEFAULT_PASSWORD = "nexo2025";
-const SESSION_KEY = "nexo-session";
-const CREDENTIALS_KEY = "nexo-credentials";
+import { supabase } from "../lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 interface AuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
     currentUser: string | null;
-    login: (username: string, password: string) => boolean;
-    logout: () => void;
-    changeCredentials: (newUsername: string, newPassword: string) => void;
+    login: (email: string, password: string) => Promise<boolean>;
+    logout: () => Promise<void>;
+    changeCredentials: (newEmail: string, newPassword: string) => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -23,67 +20,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [currentUser, setCurrentUser] = useState<string | null>(null);
 
-    useEffect(() => {
-        const session = localStorage.getItem(SESSION_KEY);
-        if (session) {
-            try {
-                const parsed = JSON.parse(session);
-                if (parsed.authenticated && parsed.username) {
-                    setIsAuthenticated(true);
-                    setCurrentUser(parsed.username);
-                }
-            } catch {
-                localStorage.removeItem(SESSION_KEY);
-            }
+    const handleUser = (user: User | null) => {
+        if (user) {
+            setIsAuthenticated(true);
+            setCurrentUser(user.email ?? user.id);
+        } else {
+            setIsAuthenticated(false);
+            setCurrentUser(null);
         }
-        setIsLoading(false);
+    };
+
+    useEffect(() => {
+        // Get initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            handleUser(session?.user ?? null);
+            setIsLoading(false);
+        });
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            handleUser(session?.user ?? null);
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
-    const getCredentials = () => {
-        const stored = localStorage.getItem(CREDENTIALS_KEY);
-        if (stored) {
-            try {
-                return JSON.parse(stored);
-            } catch {
-                return { username: DEFAULT_USERNAME, password: DEFAULT_PASSWORD };
-            }
-        }
-        return { username: DEFAULT_USERNAME, password: DEFAULT_PASSWORD };
+    const login = async (email: string, password: string): Promise<boolean> => {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        return !error;
     };
 
-    const login = (username: string, password: string): boolean => {
-        const creds = getCredentials();
-        if (username === creds.username && password === creds.password) {
-            const session = { authenticated: true, username };
-            localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-            setIsAuthenticated(true);
-            setCurrentUser(username);
-            return true;
-        }
-        return false;
+    const logout = async () => {
+        await supabase.auth.signOut();
     };
 
-    const logout = () => {
-        localStorage.removeItem(SESSION_KEY);
-        setIsAuthenticated(false);
-        setCurrentUser(null);
-    };
+    const changeCredentials = async (newEmail: string, newPassword: string): Promise<{ error: string | null }> => {
+        const updates: { email?: string; password?: string } = {};
+        if (newEmail && newEmail !== currentUser) updates.email = newEmail;
+        if (newPassword) updates.password = newPassword;
+        if (Object.keys(updates).length === 0) return { error: null };
 
-    const changeCredentials = (newUsername: string, newPassword: string) => {
-        localStorage.setItem(
-            CREDENTIALS_KEY,
-            JSON.stringify({ username: newUsername, password: newPassword })
-        );
-        // Update session with new username
-        const session = { authenticated: true, username: newUsername };
-        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-        setCurrentUser(newUsername);
+        const { error } = await supabase.auth.updateUser(updates);
+        return { error: error?.message ?? null };
     };
 
     return (
-        <AuthContext.Provider
-            value={{ isAuthenticated, isLoading, currentUser, login, logout, changeCredentials }}
-        >
+        <AuthContext.Provider value={{ isAuthenticated, isLoading, currentUser, login, logout, changeCredentials }}>
             {children}
         </AuthContext.Provider>
     );

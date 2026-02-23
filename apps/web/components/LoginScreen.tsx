@@ -17,19 +17,16 @@ export default function LoginScreen() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!username.trim() || !password.trim()) {
-            setError("Por favor introduce usuario y contraseña.");
+            setError("Por favor introduce email y contraseña.");
             triggerShake();
             return;
         }
         setLoading(true);
         setError("");
 
-        // Small delay for UX polish
-        await new Promise((r) => setTimeout(r, 600));
-
-        const success = login(username.trim(), password);
+        const success = await login(username.trim(), password);
         if (!success) {
-            setError("Usuario o contraseña incorrectos.");
+            setError("Email o contraseña incorrectos.");
             triggerShake();
             setPassword("");
         }
@@ -73,21 +70,21 @@ export default function LoginScreen() {
                     </p>
 
                     <form onSubmit={handleSubmit} className="space-y-5">
-                        {/* Username */}
+                        {/* Email */}
                         <div>
                             <label className="block text-sm font-semibold text-neutral-400 mb-2">
-                                Usuario
+                                Email
                             </label>
                             <div className="relative">
                                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500">
                                     <User size={18} />
                                 </div>
                                 <input
-                                    type="text"
+                                    type="email"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="Tu nombre de usuario"
-                                    autoComplete="username"
+                                    placeholder="tu@email.com"
+                                    autoComplete="email"
                                     className="w-full bg-neutral-950 border border-neutral-800 focus:border-lime-400 rounded-xl pl-11 pr-4 py-3.5 text-white placeholder-neutral-600 outline-none transition-colors text-sm font-medium"
                                 />
                             </div>
