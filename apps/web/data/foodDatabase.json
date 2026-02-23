@@ -1,0 +1,1730 @@
+[
+  {
+    "id": "excel-0",
+    "name": "Aceite de oliva",
+    "kcal": 899,
+    "p": 0,
+    "c": 0,
+    "f": 99.9
+  },
+  {
+    "id": "excel-1",
+    "name": "Aceitunas",
+    "kcal": 145,
+    "p": 0.9,
+    "c": 0,
+    "f": 15
+  },
+  {
+    "id": "excel-2",
+    "name": "Acelgas",
+    "kcal": 25,
+    "p": 1.8,
+    "c": 3.7,
+    "f": 0
+  },
+  {
+    "id": "excel-3",
+    "name": "Acelgas",
+    "kcal": 10,
+    "p": 0.7,
+    "c": 1.1,
+    "f": 0.5
+  },
+  {
+    "id": "excel-4",
+    "name": "Albondigas",
+    "kcal": 162,
+    "p": 15,
+    "c": 15.3,
+    "f": 4.5
+  },
+  {
+    "id": "excel-5",
+    "name": "Alcachofa",
+    "kcal": 35,
+    "p": 3.3,
+    "c": 2.7,
+    "f": 0
+  },
+  {
+    "id": "excel-6",
+    "name": "Alitas de pollo",
+    "kcal": 180,
+    "p": 18,
+    "c": 0,
+    "f": 12
+  },
+  {
+    "id": "excel-7",
+    "name": "Almeja",
+    "kcal": 71,
+    "p": 10.9,
+    "c": 5.2,
+    "f": 0.8
+  },
+  {
+    "id": "excel-8",
+    "name": "Almendra",
+    "kcal": 603,
+    "p": 21.3,
+    "c": 10.1,
+    "f": 50.5
+  },
+  {
+    "id": "excel-9",
+    "name": "Altramuces",
+    "kcal": 104,
+    "p": 9.6,
+    "c": 10.5,
+    "f": 2.1
+  },
+  {
+    "id": "excel-10",
+    "name": "Alubias",
+    "kcal": 332,
+    "p": 21.3,
+    "c": 51,
+    "f": 1.2
+  },
+  {
+    "id": "excel-11",
+    "name": "Alubias blancas",
+    "kcal": 284,
+    "p": 21.1,
+    "c": 34.7,
+    "f": 1.6
+  },
+  {
+    "id": "excel-12",
+    "name": "Anacardo",
+    "kcal": 600,
+    "p": 20.5,
+    "c": 19.8,
+    "f": 47.6
+  },
+  {
+    "id": "excel-13",
+    "name": "Arróz basmati",
+    "kcal": 344,
+    "p": 7.6,
+    "c": 75,
+    "f": 1
+  },
+  {
+    "id": "excel-14",
+    "name": "Arroz blanco largo",
+    "kcal": 355,
+    "p": 8.4,
+    "c": 77,
+    "f": 1.4
+  },
+  {
+    "id": "excel-15",
+    "name": "Arroz bomba",
+    "kcal": 333,
+    "p": 7.1,
+    "c": 75.3,
+    "f": 0.5
+  },
+  {
+    "id": "excel-16",
+    "name": "Arroz cargo ",
+    "kcal": 344,
+    "p": 8,
+    "c": 71,
+    "f": 2.1
+  },
+  {
+    "id": "excel-17",
+    "name": "Arroz integral ",
+    "kcal": 349,
+    "p": 7.6,
+    "c": 72,
+    "f": 2.9
+  },
+  {
+    "id": "excel-18",
+    "name": "Arróz redondo",
+    "kcal": 382,
+    "p": 7,
+    "c": 86,
+    "f": 0.9
+  },
+  {
+    "id": "excel-19",
+    "name": "Atún",
+    "kcal": 111,
+    "p": 24,
+    "c": 0.5,
+    "f": 1.4
+  },
+  {
+    "id": "excel-20",
+    "name": "Atún al natural ",
+    "kcal": 100,
+    "p": 25,
+    "c": 0,
+    "f": 0.1
+  },
+  {
+    "id": "excel-21",
+    "name": "Atún en aceite de oliva",
+    "kcal": 206,
+    "p": 28.1,
+    "c": 0,
+    "f": 10.4
+  },
+  {
+    "id": "excel-22",
+    "name": "Avellana con piel ",
+    "kcal": 696,
+    "p": 15,
+    "c": 17,
+    "f": 61
+  },
+  {
+    "id": "excel-23",
+    "name": "Avellanas",
+    "kcal": 607,
+    "p": 19,
+    "c": 4.8,
+    "f": 54
+  },
+  {
+    "id": "excel-24",
+    "name": "Bacalao",
+    "kcal": 48,
+    "p": 12,
+    "c": 0,
+    "f": 0
+  },
+  {
+    "id": "excel-25",
+    "name": "Baguette",
+    "kcal": 267,
+    "p": 8.2,
+    "c": 55,
+    "f": 1.1
+  },
+  {
+    "id": "excel-26",
+    "name": "Bebida de arroz",
+    "kcal": 56,
+    "p": 0,
+    "c": 11.6,
+    "f": 1.1
+  },
+  {
+    "id": "excel-27",
+    "name": "Bebida de avellana",
+    "kcal": 25,
+    "p": 0.6,
+    "c": 0,
+    "f": 2.5
+  },
+  {
+    "id": "excel-28",
+    "name": "Bebida de avena",
+    "kcal": 42,
+    "p": 0.7,
+    "c": 7.7,
+    "f": 0.8
+  },
+  {
+    "id": "excel-29",
+    "name": "Bebida de soja",
+    "kcal": 32,
+    "p": 3.1,
+    "c": 0.9,
+    "f": 1.7
+  },
+  {
+    "id": "excel-30",
+    "name": "Berberechos al natural",
+    "kcal": 40,
+    "p": 5.3,
+    "c": 3.8,
+    "f": 0.4
+  },
+  {
+    "id": "excel-31",
+    "name": "Biscotes",
+    "kcal": 389,
+    "p": 11,
+    "c": 73,
+    "f": 4.8
+  },
+  {
+    "id": "excel-32",
+    "name": "Boniato",
+    "kcal": 60,
+    "p": 2.3,
+    "c": 11.8,
+    "f": 0.084
+  },
+  {
+    "id": "excel-33",
+    "name": "Bonito al natural ",
+    "kcal": 129,
+    "p": 24.4,
+    "c": 0.7,
+    "f": 3.2
+  },
+  {
+    "id": "excel-34",
+    "name": "Bonito del norte  ",
+    "kcal": 140,
+    "p": 26,
+    "c": 0.7,
+    "f": 4
+  },
+  {
+    "id": "excel-35",
+    "name": "Bonito en aceite de oliva",
+    "kcal": 233,
+    "p": 26.9,
+    "c": 0,
+    "f": 13.9
+  },
+  {
+    "id": "excel-36",
+    "name": "Boqueron en aceite de oliva",
+    "kcal": 168,
+    "p": 22.9,
+    "c": 0.7,
+    "f": 8.1
+  },
+  {
+    "id": "excel-37",
+    "name": "Brochetas de pollo ",
+    "kcal": 102,
+    "p": 16.7,
+    "c": 0.5,
+    "f": 3.7
+  },
+  {
+    "id": "excel-38",
+    "name": "Brocoli",
+    "kcal": 36,
+    "p": 2.8,
+    "c": 4,
+    "f": 0.4
+  },
+  {
+    "id": "excel-39",
+    "name": "Burrata ",
+    "kcal": 255,
+    "p": 12.1,
+    "c": 2.1,
+    "f": 22
+  },
+  {
+    "id": "excel-40",
+    "name": "Butifarra de cerdo",
+    "kcal": 194,
+    "p": 14,
+    "c": 3.8,
+    "f": 14
+  },
+  {
+    "id": "excel-41",
+    "name": "Caballa   ",
+    "kcal": 314,
+    "p": 20,
+    "c": 0,
+    "f": 26
+  },
+  {
+    "id": "excel-42",
+    "name": "Caballa en aceite de oliva",
+    "kcal": 197.2,
+    "p": 25.23,
+    "c": 0.1,
+    "f": 10.73
+  },
+  {
+    "id": "excel-43",
+    "name": "Cacao en polvo",
+    "kcal": 375,
+    "p": 26,
+    "c": 16,
+    "f": 16
+  },
+  {
+    "id": "excel-44",
+    "name": "Calabacín",
+    "kcal": 21,
+    "p": 1.1,
+    "c": 2.5,
+    "f": 0.5
+  },
+  {
+    "id": "excel-45",
+    "name": "Calabaza",
+    "kcal": 32,
+    "p": 1.2,
+    "c": 5.6,
+    "f": 0.5
+  },
+  {
+    "id": "excel-46",
+    "name": "Calamar",
+    "kcal": 46,
+    "p": 9.9,
+    "c": 0,
+    "f": 0.7
+  },
+  {
+    "id": "excel-47",
+    "name": "Canonigos",
+    "kcal": 21,
+    "p": 2,
+    "c": 1.2,
+    "f": 0.4
+  },
+  {
+    "id": "excel-48",
+    "name": "Carne picada de ternera",
+    "kcal": 223,
+    "p": 18,
+    "c": 1.7,
+    "f": 16
+  },
+  {
+    "id": "excel-49",
+    "name": "Carpaccio de vacuno",
+    "kcal": 100,
+    "p": 20,
+    "c": 0.9,
+    "f": 1.8
+  },
+  {
+    "id": "excel-50",
+    "name": "Cebolla",
+    "kcal": 32,
+    "p": 1,
+    "c": 6.4,
+    "f": 0.2
+  },
+  {
+    "id": "excel-51",
+    "name": "Cecina",
+    "kcal": 172,
+    "p": 29,
+    "c": 0.8,
+    "f": 5.9
+  },
+  {
+    "id": "excel-52",
+    "name": "Cereales integrales",
+    "kcal": 297,
+    "p": 13.5,
+    "c": 35,
+    "f": 2.5
+  },
+  {
+    "id": "excel-53",
+    "name": "Champiñones",
+    "kcal": 15,
+    "p": 2.7,
+    "c": 2.2,
+    "f": 0
+  },
+  {
+    "id": "excel-54",
+    "name": "Chapata",
+    "kcal": 264,
+    "p": 7.8,
+    "c": 54,
+    "f": 1.1
+  },
+  {
+    "id": "excel-55",
+    "name": "Chipirones",
+    "kcal": 61,
+    "p": 13,
+    "c": 0,
+    "f": 1
+  },
+  {
+    "id": "excel-56",
+    "name": "Chuleta de lomo",
+    "kcal": 147,
+    "p": 22,
+    "c": 0.1,
+    "f": 6.5
+  },
+  {
+    "id": "excel-57",
+    "name": "Claras de huevo ",
+    "kcal": 43,
+    "p": 11,
+    "c": 0.25,
+    "f": 0.25
+  },
+  {
+    "id": "excel-58",
+    "name": "Coco ",
+    "kcal": 357,
+    "p": 3.3,
+    "c": 15,
+    "f": 32
+  },
+  {
+    "id": "excel-59",
+    "name": "Coctel de frutos secos",
+    "kcal": 412,
+    "p": 10,
+    "c": 36,
+    "f": 22
+  },
+  {
+    "id": "excel-60",
+    "name": "Coles de bruselas",
+    "kcal": 42,
+    "p": 3.2,
+    "c": 4.5,
+    "f": 0.3
+  },
+  {
+    "id": "excel-61",
+    "name": "Coles de bruselas",
+    "kcal": 27,
+    "p": 1.7,
+    "c": 3.7,
+    "f": 0
+  },
+  {
+    "id": "excel-62",
+    "name": "Coliflor",
+    "kcal": 17,
+    "p": 0.8,
+    "c": 2.8,
+    "f": 0.5
+  },
+  {
+    "id": "excel-63",
+    "name": "Copos de avena",
+    "kcal": 372,
+    "p": 13.5,
+    "c": 58.7,
+    "f": 7
+  },
+  {
+    "id": "excel-64",
+    "name": "Copos de maíz ",
+    "kcal": 361,
+    "p": 11,
+    "c": 66,
+    "f": 2.5
+  },
+  {
+    "id": "excel-65",
+    "name": "Cous cous",
+    "kcal": 373,
+    "p": 13,
+    "c": 73.3,
+    "f": 2.8
+  },
+  {
+    "id": "excel-66",
+    "name": "Cuartos de pollo",
+    "kcal": 173,
+    "p": 18,
+    "c": 0,
+    "f": 11
+  },
+  {
+    "id": "excel-67",
+    "name": "Dorada",
+    "kcal": 150,
+    "p": 20,
+    "c": 0,
+    "f": 7.8
+  },
+  {
+    "id": "excel-68",
+    "name": "Endibidas",
+    "kcal": 17,
+    "p": 0.025,
+    "c": 3.4,
+    "f": 0.2
+  },
+  {
+    "id": "excel-69",
+    "name": "Ensalada",
+    "kcal": 20,
+    "p": 0.7,
+    "c": 2.3,
+    "f": 0.5
+  },
+  {
+    "id": "excel-70",
+    "name": "Espaguetti",
+    "kcal": 353,
+    "p": 14.5,
+    "c": 70,
+    "f": 1
+  },
+  {
+    "id": "excel-71",
+    "name": "Esparragos blancos",
+    "kcal": 19.8,
+    "p": 1,
+    "c": 2.5,
+    "f": 0.2
+  },
+  {
+    "id": "excel-72",
+    "name": "Esparragos verdes",
+    "kcal": 28,
+    "p": 2.9,
+    "c": 2,
+    "f": 0.6
+  },
+  {
+    "id": "excel-73",
+    "name": "Espinacas",
+    "kcal": 28,
+    "p": 3.4,
+    "c": 0.9,
+    "f": 0.6
+  },
+  {
+    "id": "excel-74",
+    "name": "Fiambre de cerdo",
+    "kcal": 106,
+    "p": 10.5,
+    "c": 7.3,
+    "f": 3.8
+  },
+  {
+    "id": "excel-75",
+    "name": "Fiambre de pechuga de pollo ",
+    "kcal": 108,
+    "p": 24,
+    "c": 0.8,
+    "f": 1
+  },
+  {
+    "id": "excel-76",
+    "name": "Fideos de wok",
+    "kcal": 355,
+    "p": 9.3,
+    "c": 76.7,
+    "f": 0.8
+  },
+  {
+    "id": "excel-77",
+    "name": "Fresa",
+    "kcal": 35,
+    "p": 0.7,
+    "c": 7,
+    "f": 0.5
+  },
+  {
+    "id": "excel-78",
+    "name": "Fuet",
+    "kcal": 472,
+    "p": 25,
+    "c": 1.9,
+    "f": 39
+  },
+  {
+    "id": "excel-79",
+    "name": "Gamba",
+    "kcal": 45,
+    "p": 9.4,
+    "c": 0.5,
+    "f": 0.8
+  },
+  {
+    "id": "excel-80",
+    "name": "Garbanzos",
+    "kcal": 348,
+    "p": 21,
+    "c": 46,
+    "f": 5.8
+  },
+  {
+    "id": "excel-81",
+    "name": "Gelatina",
+    "kcal": 41,
+    "p": 1.5,
+    "c": 8.5,
+    "f": 0
+  },
+  {
+    "id": "excel-82",
+    "name": "Gnocchi",
+    "kcal": 129,
+    "p": 2.9,
+    "c": 28,
+    "f": 0.1
+  },
+  {
+    "id": "excel-83",
+    "name": "Granola",
+    "kcal": 462,
+    "p": 8.55,
+    "c": 50,
+    "f": 24.4
+  },
+  {
+    "id": "excel-84",
+    "name": "Guisantes",
+    "kcal": 65,
+    "p": 5,
+    "c": 7,
+    "f": 0.4
+  },
+  {
+    "id": "excel-85",
+    "name": "Hamburguesa de conejo",
+    "kcal": 136,
+    "p": 14.4,
+    "c": 6,
+    "f": 6
+  },
+  {
+    "id": "excel-86",
+    "name": "Hamburguesa de pavo    ",
+    "kcal": 108,
+    "p": 18,
+    "c": 1.3,
+    "f": 3.2
+  },
+  {
+    "id": "excel-87",
+    "name": "Hamburguesa de pavo con espinacas",
+    "kcal": 120.4,
+    "p": 15.6,
+    "c": 5.5,
+    "f": 4
+  },
+  {
+    "id": "excel-88",
+    "name": "Hamburguesa de pollo",
+    "kcal": 172,
+    "p": 14.6,
+    "c": 6.3,
+    "f": 9.8
+  },
+  {
+    "id": "excel-89",
+    "name": "Hamburguesa de pollo",
+    "kcal": 103,
+    "p": 17.7,
+    "c": 3.4,
+    "f": 2.1
+  },
+  {
+    "id": "excel-90",
+    "name": "Hamburguesa de pollo con espinacas",
+    "kcal": 97,
+    "p": 14,
+    "c": 1.8,
+    "f": 2.4
+  },
+  {
+    "id": "excel-91",
+    "name": "Hamburguesa de ternera",
+    "kcal": 167,
+    "p": 18,
+    "c": 2.2,
+    "f": 9.6
+  },
+  {
+    "id": "excel-92",
+    "name": "Harina de arroz",
+    "kcal": 346,
+    "p": 6.27,
+    "c": 76,
+    "f": 1.25
+  },
+  {
+    "id": "excel-93",
+    "name": "Harina de avena",
+    "kcal": 382,
+    "p": 13.7,
+    "c": 65.6,
+    "f": 7
+  },
+  {
+    "id": "excel-94",
+    "name": "Huevos",
+    "kcal": 141,
+    "p": 12.7,
+    "c": 0.68,
+    "f": 9.7
+  },
+  {
+    "id": "excel-95",
+    "name": "Hummus",
+    "kcal": 138,
+    "p": 5.67,
+    "c": 16.9,
+    "f": 6.81
+  },
+  {
+    "id": "excel-96",
+    "name": "Jamon cocido",
+    "kcal": 202,
+    "p": 11.1,
+    "c": 16.1,
+    "f": 10.1
+  },
+  {
+    "id": "excel-97",
+    "name": "Jamon cocido ",
+    "kcal": 94,
+    "p": 16,
+    "c": 1.8,
+    "f": 2.5
+  },
+  {
+    "id": "excel-98",
+    "name": "Jamón serrano",
+    "kcal": 247.8,
+    "p": 33.5,
+    "c": 1,
+    "f": 12.2
+  },
+  {
+    "id": "excel-99",
+    "name": "Jamoncitos de pollo",
+    "kcal": 101,
+    "p": 18.7,
+    "c": 0.25,
+    "f": 2.9
+  },
+  {
+    "id": "excel-100",
+    "name": "Judia verde",
+    "kcal": 39,
+    "p": 1.9,
+    "c": 6.1,
+    "f": 0
+  },
+  {
+    "id": "excel-101",
+    "name": "Ketchup",
+    "kcal": 96,
+    "p": 1.3,
+    "c": 22,
+    "f": 0.5
+  },
+  {
+    "id": "excel-102",
+    "name": "Kiwi",
+    "kcal": 53,
+    "p": 0.7,
+    "c": 9.8,
+    "f": 0.5
+  },
+  {
+    "id": "excel-103",
+    "name": "Kiwi amarillo",
+    "kcal": 54,
+    "p": 0.9,
+    "c": 11.1,
+    "f": 0.3
+  },
+  {
+    "id": "excel-104",
+    "name": "Leche desnatada",
+    "kcal": 35,
+    "p": 3.2,
+    "c": 4.8,
+    "f": 0.3
+  },
+  {
+    "id": "excel-105",
+    "name": "Leche entera",
+    "kcal": 63,
+    "p": 3,
+    "c": 4.6,
+    "f": 3.6
+  },
+  {
+    "id": "excel-106",
+    "name": "Leche semidesnatada",
+    "kcal": 45,
+    "p": 3.1,
+    "c": 4.7,
+    "f": 1.55
+  },
+  {
+    "id": "excel-107",
+    "name": "Lechuga",
+    "kcal": 19.32,
+    "p": 1.23,
+    "c": 1.78,
+    "f": 0.56
+  },
+  {
+    "id": "excel-108",
+    "name": "Lentejas",
+    "kcal": 329,
+    "p": 24,
+    "c": 51,
+    "f": 1.1
+  },
+  {
+    "id": "excel-109",
+    "name": "Límon",
+    "kcal": 44,
+    "p": 0.4,
+    "c": 8.2,
+    "f": 0.1
+  },
+  {
+    "id": "excel-110",
+    "name": "Lomo embuchado",
+    "kcal": 204.2,
+    "p": 35.26,
+    "c": 0.66,
+    "f": 6.72
+  },
+  {
+    "id": "excel-111",
+    "name": "Lubina",
+    "kcal": 148,
+    "p": 19.5,
+    "c": 4.7,
+    "f": 5.7
+  },
+  {
+    "id": "excel-112",
+    "name": "Macarrones",
+    "kcal": 366,
+    "p": 12,
+    "c": 74,
+    "f": 1.5
+  },
+  {
+    "id": "excel-113",
+    "name": "Maíz crudo",
+    "kcal": 320,
+    "p": 10.3,
+    "c": 46,
+    "f": 4.5
+  },
+  {
+    "id": "excel-114",
+    "name": "Maíz dulce ",
+    "kcal": 77,
+    "p": 2.5,
+    "c": 12,
+    "f": 1.7
+  },
+  {
+    "id": "excel-115",
+    "name": "Mandarina",
+    "kcal": 53,
+    "p": 0.8,
+    "c": 13,
+    "f": 0.3
+  },
+  {
+    "id": "excel-116",
+    "name": "Manteqiulla light",
+    "kcal": 366,
+    "p": 0.5,
+    "c": 0.9,
+    "f": 40
+  },
+  {
+    "id": "excel-117",
+    "name": "Mantequilla   ",
+    "kcal": 742,
+    "p": 0.6,
+    "c": 0.4,
+    "f": 82
+  },
+  {
+    "id": "excel-118",
+    "name": "Manzana",
+    "kcal": 53,
+    "p": 0.3,
+    "c": 11.4,
+    "f": 0.2
+  },
+  {
+    "id": "excel-119",
+    "name": "Mascarpone",
+    "kcal": 403,
+    "p": 4.5,
+    "c": 4,
+    "f": 41
+  },
+  {
+    "id": "excel-120",
+    "name": "Mató",
+    "kcal": 172,
+    "p": 9.9,
+    "c": 5.6,
+    "f": 11.7
+  },
+  {
+    "id": "excel-121",
+    "name": "Mayonesa",
+    "kcal": 653,
+    "p": 1,
+    "c": 0.7,
+    "f": 72
+  },
+  {
+    "id": "excel-122",
+    "name": "Mejillón",
+    "kcal": 59,
+    "p": 8.7,
+    "c": 3,
+    "f": 1.4
+  },
+  {
+    "id": "excel-123",
+    "name": "Mejillones al natural ",
+    "kcal": 72,
+    "p": 11,
+    "c": 1.9,
+    "f": 2
+  },
+  {
+    "id": "excel-124",
+    "name": "Melon",
+    "kcal": 27,
+    "p": 0.6,
+    "c": 6,
+    "f": 0
+  },
+  {
+    "id": "excel-125",
+    "name": "Menestra de verduras",
+    "kcal": 53,
+    "p": 3.1,
+    "c": 8.1,
+    "f": 0.2
+  },
+  {
+    "id": "excel-126",
+    "name": "Merluza",
+    "kcal": 89,
+    "p": 15.9,
+    "c": 0,
+    "f": 2.8
+  },
+  {
+    "id": "excel-127",
+    "name": "Mezcla de verduras",
+    "kcal": 24,
+    "p": 0.8,
+    "c": 3.6,
+    "f": 0.2
+  },
+  {
+    "id": "excel-128",
+    "name": "Miel",
+    "kcal": 300,
+    "p": 0.42,
+    "c": 82.9,
+    "f": 0
+  },
+  {
+    "id": "excel-129",
+    "name": "Mortadela",
+    "kcal": 248,
+    "p": 12,
+    "c": 5,
+    "f": 20
+  },
+  {
+    "id": "excel-130",
+    "name": "Mostazaa",
+    "kcal": 75,
+    "p": 3.3,
+    "c": 6.9,
+    "f": 2.9
+  },
+  {
+    "id": "excel-131",
+    "name": "Mozzarela",
+    "kcal": 217,
+    "p": 17,
+    "c": 1.3,
+    "f": 16
+  },
+  {
+    "id": "excel-132",
+    "name": "Muesli",
+    "kcal": 363,
+    "p": 9.1,
+    "c": 60,
+    "f": 7.4
+  },
+  {
+    "id": "excel-133",
+    "name": "Naranja",
+    "kcal": 42,
+    "p": 0.8,
+    "c": 8.6,
+    "f": 0
+  },
+  {
+    "id": "excel-134",
+    "name": "Nuez",
+    "kcal": 611,
+    "p": 14,
+    "c": 3.3,
+    "f": 59
+  },
+  {
+    "id": "excel-135",
+    "name": "Pan",
+    "kcal": 265,
+    "p": 9.5,
+    "c": 52,
+    "f": 1.5
+  },
+  {
+    "id": "excel-136",
+    "name": "Pan de molde",
+    "kcal": 246,
+    "p": 9.2,
+    "c": 45,
+    "f": 2.5
+  },
+  {
+    "id": "excel-137",
+    "name": "Pan de molde integral",
+    "kcal": 236,
+    "p": 10,
+    "c": 40,
+    "f": 2.8
+  },
+  {
+    "id": "excel-138",
+    "name": "Panga",
+    "kcal": 50,
+    "p": 10,
+    "c": 0,
+    "f": 1.5
+  },
+  {
+    "id": "excel-139",
+    "name": "Pasas",
+    "kcal": 309,
+    "p": 2.4,
+    "c": 69,
+    "f": 1.2
+  },
+  {
+    "id": "excel-140",
+    "name": "Pasta",
+    "kcal": 350,
+    "p": 11.5,
+    "c": 74,
+    "f": 1
+  },
+  {
+    "id": "excel-141",
+    "name": "Pasta fresca ",
+    "kcal": 272,
+    "p": 10,
+    "c": 51,
+    "f": 1.9
+  },
+  {
+    "id": "excel-142",
+    "name": "Pasta integral",
+    "kcal": 347,
+    "p": 12,
+    "c": 67,
+    "f": 1.9
+  },
+  {
+    "id": "excel-143",
+    "name": "Patata",
+    "kcal": 70,
+    "p": 1.7,
+    "c": 15.7,
+    "f": 0.1
+  },
+  {
+    "id": "excel-144",
+    "name": "Pechuga de pavo ",
+    "kcal": 92,
+    "p": 20,
+    "c": 0.8,
+    "f": 1
+  },
+  {
+    "id": "excel-145",
+    "name": "Pechuga de pollo",
+    "kcal": 108,
+    "p": 23,
+    "c": 0.5,
+    "f": 1.5
+  },
+  {
+    "id": "excel-146",
+    "name": "Pepinillos",
+    "kcal": 37,
+    "p": 1.1,
+    "c": 6.2,
+    "f": 0.25
+  },
+  {
+    "id": "excel-147",
+    "name": "Picatostes",
+    "kcal": 386,
+    "p": 11.4,
+    "c": 81,
+    "f": 1.81
+  },
+  {
+    "id": "excel-148",
+    "name": "Pimiento",
+    "kcal": 28,
+    "p": 0.9,
+    "c": 4.5,
+    "f": 0.4
+  },
+  {
+    "id": "excel-149",
+    "name": "Pimiento rojo",
+    "kcal": 22,
+    "p": 0.7,
+    "c": 4.2,
+    "f": 0.5
+  },
+  {
+    "id": "excel-150",
+    "name": "Piña",
+    "kcal": 49,
+    "p": 0.4,
+    "c": 11.3,
+    "f": 0.2
+  },
+  {
+    "id": "excel-151",
+    "name": "Piñones ",
+    "kcal": 603,
+    "p": 37,
+    "c": 3.2,
+    "f": 48
+  },
+  {
+    "id": "excel-152",
+    "name": "Pipas de girasol",
+    "kcal": 580,
+    "p": 27,
+    "c": 20,
+    "f": 43
+  },
+  {
+    "id": "excel-153",
+    "name": "Pistacho",
+    "kcal": 629,
+    "p": 26,
+    "c": 13,
+    "f": 50
+  },
+  {
+    "id": "excel-154",
+    "name": "Pota argentina",
+    "kcal": 50,
+    "p": 10,
+    "c": 0.6,
+    "f": 0.8
+  },
+  {
+    "id": "excel-155",
+    "name": "Proteina en polvo",
+    "kcal": 376,
+    "p": 80.4,
+    "c": 4.4,
+    "f": 2.9
+  },
+  {
+    "id": "excel-156",
+    "name": "Puerros",
+    "kcal": 24,
+    "p": 2.5,
+    "c": 15,
+    "f": 0.25
+  },
+  {
+    "id": "excel-157",
+    "name": "Queso blanco    ",
+    "kcal": 154,
+    "p": 9.3,
+    "c": 1.4,
+    "f": 12.4
+  },
+  {
+    "id": "excel-158",
+    "name": "Queso blanco desnatado",
+    "kcal": 58,
+    "p": 11,
+    "c": 3.6,
+    "f": 0
+  },
+  {
+    "id": "excel-159",
+    "name": "Queso feta",
+    "kcal": 257,
+    "p": 17,
+    "c": 0,
+    "f": 21
+  },
+  {
+    "id": "excel-160",
+    "name": "Queso fresco    ",
+    "kcal": 158,
+    "p": 8,
+    "c": 4.5,
+    "f": 12
+  },
+  {
+    "id": "excel-161",
+    "name": "Queso fresco 0%",
+    "kcal": 60,
+    "p": 10,
+    "c": 3.9,
+    "f": 0.25
+  },
+  {
+    "id": "excel-162",
+    "name": "Queso fresco batido    ",
+    "kcal": 46,
+    "p": 7.5,
+    "c": 4,
+    "f": 0
+  },
+  {
+    "id": "excel-163",
+    "name": "Queso fresco batido 0%",
+    "kcal": 46,
+    "p": 8,
+    "c": 3.5,
+    "f": 0.1
+  },
+  {
+    "id": "excel-164",
+    "name": "Queso fresco graso",
+    "kcal": 184,
+    "p": 11,
+    "c": 3.6,
+    "f": 14
+  },
+  {
+    "id": "excel-165",
+    "name": "Queso semi",
+    "kcal": 258,
+    "p": 17,
+    "c": 7.1,
+    "f": 18
+  },
+  {
+    "id": "excel-166",
+    "name": "Queso vegano",
+    "kcal": 303,
+    "p": 0.5,
+    "c": 19.5,
+    "f": 24.4
+  },
+  {
+    "id": "excel-167",
+    "name": "Quinoa",
+    "kcal": 380,
+    "p": 14,
+    "c": 64,
+    "f": 6
+  },
+  {
+    "id": "excel-168",
+    "name": "Rape",
+    "kcal": 72,
+    "p": 17.4,
+    "c": 0,
+    "f": 0.3
+  },
+  {
+    "id": "excel-169",
+    "name": "Requeson",
+    "kcal": 102,
+    "p": 10.2,
+    "c": 4.3,
+    "f": 4.9
+  },
+  {
+    "id": "excel-170",
+    "name": "Ricotta",
+    "kcal": 97,
+    "p": 7,
+    "c": 3.7,
+    "f": 6
+  },
+  {
+    "id": "excel-171",
+    "name": "Rucula",
+    "kcal": 28,
+    "p": 3.4,
+    "c": 1.3,
+    "f": 0.6
+  },
+  {
+    "id": "excel-172",
+    "name": "salchica de cerdo",
+    "kcal": 153,
+    "p": 15.9,
+    "c": 0.4,
+    "f": 9.9
+  },
+  {
+    "id": "excel-173",
+    "name": "Salchicha de pollo",
+    "kcal": 191,
+    "p": 15,
+    "c": 0.5,
+    "f": 14
+  },
+  {
+    "id": "excel-174",
+    "name": "Salmón",
+    "kcal": 216,
+    "p": 18.7,
+    "c": 1,
+    "f": 15.7
+  },
+  {
+    "id": "excel-175",
+    "name": "Salsa de tomate natural",
+    "kcal": 22,
+    "p": 1,
+    "c": 3.6,
+    "f": 0
+  },
+  {
+    "id": "excel-176",
+    "name": "Sardinas en aciete de oliva",
+    "kcal": 217,
+    "p": 21.2,
+    "c": 0.6,
+    "f": 14.4
+  },
+  {
+    "id": "excel-177",
+    "name": "Sarraceno",
+    "kcal": 343,
+    "p": 13.2,
+    "c": 71.5,
+    "f": 3.4
+  },
+  {
+    "id": "excel-178",
+    "name": "Semillas de calabaza",
+    "kcal": 559,
+    "p": 30,
+    "c": 11,
+    "f": 49
+  },
+  {
+    "id": "excel-179",
+    "name": "Sepia",
+    "kcal": 81,
+    "p": 18,
+    "c": 0.5,
+    "f": 1
+  },
+  {
+    "id": "excel-180",
+    "name": "Setas",
+    "kcal": 22,
+    "p": 3.09,
+    "c": 3.28,
+    "f": 0.34
+  },
+  {
+    "id": "excel-181",
+    "name": "Setina",
+    "kcal": 145,
+    "p": 21,
+    "c": 8.8,
+    "f": 1.6
+  },
+  {
+    "id": "excel-182",
+    "name": "Soja ",
+    "kcal": 361,
+    "p": 50,
+    "c": 13,
+    "f": 8.8
+  },
+  {
+    "id": "excel-183",
+    "name": "Surimi",
+    "kcal": 100,
+    "p": 8.5,
+    "c": 8.5,
+    "f": 3.6
+  },
+  {
+    "id": "excel-184",
+    "name": "Tofu",
+    "kcal": 148,
+    "p": 15,
+    "c": 1.6,
+    "f": 8.6
+  },
+  {
+    "id": "excel-185",
+    "name": "Tomate ",
+    "kcal": 26,
+    "p": 0,
+    "c": 5.1,
+    "f": 0.5
+  },
+  {
+    "id": "excel-186",
+    "name": "Tomate frito",
+    "kcal": 73,
+    "p": 1.3,
+    "c": 8.7,
+    "f": 3.3
+  },
+  {
+    "id": "excel-187",
+    "name": "Vieira",
+    "kcal": 87,
+    "p": 7.3,
+    "c": 3.4,
+    "f": 0.7
+  },
+  {
+    "id": "excel-188",
+    "name": "Zanahoria",
+    "kcal": 34,
+    "p": 0.8,
+    "c": 7,
+    "f": 0.3
+  },
+  {
+    "id": "excel-189",
+    "name": "Queso Cottage",
+    "kcal": 80,
+    "p": 12.6,
+    "c": 3.5,
+    "f": 1.8
+  },
+  {
+    "id": "excel-190",
+    "name": "Platano",
+    "kcal": 90,
+    "p": 1.1,
+    "c": 22.6,
+    "f": 0.3
+  },
+  {
+    "id": "excel-191",
+    "name": "Yogur",
+    "kcal": 61,
+    "p": 4.1,
+    "c": 4.6,
+    "f": 2.8
+  },
+  {
+    "id": "excel-192",
+    "name": "Fiambre de pechuga de pavo ",
+    "kcal": 92,
+    "p": 18.5,
+    "c": 2.1,
+    "f": 1.6
+  },
+  {
+    "id": "excel-193",
+    "name": "Aguacate",
+    "kcal": 160,
+    "p": 2,
+    "c": 8.5,
+    "f": 14.7
+  },
+  {
+    "id": "excel-194",
+    "name": "Berenjena",
+    "kcal": 25,
+    "p": 1,
+    "c": 5.8,
+    "f": 0.2
+  },
+  {
+    "id": "excel-195",
+    "name": "Verduras",
+    "kcal": 30,
+    "p": 2,
+    "c": 5,
+    "f": 0.3
+  },
+  {
+    "id": "excel-196",
+    "name": "Crema de cacahuete",
+    "kcal": 595,
+    "p": 28.5,
+    "c": 12,
+    "f": 49
+  },
+  {
+    "id": "excel-197",
+    "name": "Conejo",
+    "kcal": 133,
+    "p": 22.5,
+    "c": 0,
+    "f": 4.8
+  },
+  {
+    "id": "excel-198",
+    "name": "Pan integral ",
+    "kcal": 260,
+    "p": 10,
+    "c": 44,
+    "f": 3.5
+  },
+  {
+    "id": "excel-199",
+    "name": "Carne picada de pollo",
+    "kcal": 148,
+    "p": 17.5,
+    "c": 2.5,
+    "f": 7.5
+  },
+  {
+    "id": "excel-200",
+    "name": "Bistec de ternera",
+    "kcal": 140,
+    "p": 22.5,
+    "c": 0,
+    "f": 6
+  },
+  {
+    "id": "excel-201",
+    "name": "Fajitas de trigo ",
+    "kcal": 130,
+    "p": 3,
+    "c": 23,
+    "f": 3
+  },
+  {
+    "id": "excel-202",
+    "name": "Filete de atún",
+    "kcal": 135,
+    "p": 24,
+    "c": 0,
+    "f": 4
+  },
+  {
+    "id": "excel-203",
+    "name": "Salmón ahumado",
+    "kcal": 140,
+    "p": 25.4,
+    "c": 0,
+    "f": 4.3
+  },
+  {
+    "id": "excel-204",
+    "name": "Queso Philadelphia",
+    "kcal": 249,
+    "p": 3.7,
+    "c": 2.8,
+    "f": 25
+  },
+  {
+    "id": "excel-205",
+    "name": "Queso Philadelphia light",
+    "kcal": 154,
+    "p": 5.9,
+    "c": 4.1,
+    "f": 12
+  },
+  {
+    "id": "excel-206",
+    "name": "Salsa de soja",
+    "kcal": 60,
+    "p": 6,
+    "c": 5,
+    "f": 0
+  },
+  {
+    "id": "excel-207",
+    "name": "Yogur griego ",
+    "kcal": 129,
+    "p": 3.9,
+    "c": 3.9,
+    "f": 10.8
+  },
+  {
+    "id": "excel-208",
+    "name": "Yogur griego desnatado",
+    "kcal": 60,
+    "p": 5.8,
+    "c": 4.7,
+    "f": 2
+  },
+  {
+    "id": "excel-209",
+    "name": "Pan de hamburguesa",
+    "kcal": 140,
+    "p": 4.7,
+    "c": 24.7,
+    "f": 2.1
+  },
+  {
+    "id": "excel-210",
+    "name": "Pepino",
+    "kcal": 14,
+    "p": 0.6,
+    "c": 2.9,
+    "f": 0.1
+  },
+  {
+    "id": "excel-211",
+    "name": "Fruta",
+    "kcal": 64,
+    "p": 0.5,
+    "c": 14.3,
+    "f": 0.3
+  },
+  {
+    "id": "excel-212",
+    "name": "Caldo vegetal",
+    "kcal": 5,
+    "p": 0.5,
+    "c": 0.5,
+    "f": 0.6
+  },
+  {
+    "id": "excel-213",
+    "name": "Caldo de pescado",
+    "kcal": 39,
+    "p": 4.8,
+    "c": 1,
+    "f": 1.5
+  },
+  {
+    "id": "excel-214",
+    "name": "Caldo de pollo",
+    "kcal": 12,
+    "p": 1,
+    "c": 1.5,
+    "f": 0.3
+  },
+  {
+    "id": "excel-215",
+    "name": "Chocolate 85%",
+    "kcal": 96,
+    "p": 2,
+    "c": 3.2,
+    "f": 7.8
+  }
+]

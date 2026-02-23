@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  subdomain String?  @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  patients     Patient[]
+  dietPlans    DietPlan[]
+  appointments Appointment[]
+}
+
+enum Role {
+  ADMIN
+  NUTRITIONIST
+}
+
+model User {
+  id        String   @id @default(uuid())
+  tenantId  String
+  email     String   @unique
+  name      String?
+  role      Role     @default(NUTRITIONIST)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  appointments Appointment[]
+  dietPlans    DietPlan[]
+}
+
+model Patient {
+  id        String   @id @default(uuid())
+  tenantId  String
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
+  anamnesis    Anamnesis[]
+  metrics      Metric[]
+  dietPlans    DietPlan[]
+  appointments Appointment[]
+}
+
+model Anamnesis {
+  id        String   @id @default(uuid())
+  patientId String
+  data      Json
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  patient Patient @relation(fields: [patientId], references: [id])
+}
+
+model Metric {
+  id                String   @id @default(uuid())
+  patientId         String
+  weight            Float
+  bodyFatPercentage Float?
+  muscleMass        Float?
+  perimeters        Json?
+  date              DateTime @default(now())
+  createdAt         DateTime @default(now())
+
+  patient Patient @relation(fields: [patientId], references: [id])
+}
+
+model DietPlan {
+  id             String    @id @default(uuid())
+  tenantId       String
+  patientId      String
+  nutritionistId String
+  targetKcal     Float?
+  targetMacros   Json?
+  startDate      DateTime
+  endDate        DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant       Tenant  @relation(fields: [tenantId], references: [id])
+  patient      Patient @relation(fields: [patientId], references: [id])
+  nutritionist User    @relation(fields: [nutritionistId], references: [id])
+  meals        Meal[]
+}
+
+model Appointment {
+  id             String   @id @default(uuid())
+  tenantId       String
+  patientId      String
+  nutritionistId String
+  date           DateTime
+  status         String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant       Tenant  @relation(fields: [tenantId], references: [id])
+  patient      Patient @relation(fields: [patientId], references: [id])
+  nutritionist User    @relation(fields: [nutritionistId], references: [id])
+}
+
+model Meal {
+  id         String   @id @default(uuid())
+  dietPlanId String
+  type       String // Breakfast, Lunch, Dinner, Snack
+  dayOfWeek  Int // 1-7
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  dietPlan  DietPlan   @relation(fields: [dietPlanId], references: [id])
+  mealItems MealItem[]
+}
+
+model MealItem {
+  id            String   @id @default(uuid())
+  mealId        String
+  foodSource    String // bedca_123, fatsecret_456
+  quantityGrams Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  meal Meal @relation(fields: [mealId], references: [id])
+}
