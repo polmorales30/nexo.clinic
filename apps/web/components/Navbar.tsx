@@ -39,13 +39,13 @@ export default function Navbar() {
                 <span className="font-bold text-xl text-white tracking-tight">NEXO<span className="text-lime-400">.Clinic</span></span>
             </Link>
 
-            <div className="flex gap-6 text-sm font-medium text-neutral-400">
-                <Link href="/pacientes" className={`cursor-pointer ${pathname === "/pacientes" ? "text-white border-b-2 border-lime-400 pb-1" : "hover:text-white"}`}>Pacientes</Link>
-                <Link href="/" className={`cursor-pointer ${pathname === "/" ? "text-white border-b-2 border-lime-400 pb-1" : "hover:text-white"}`}>Panel Principal</Link>
-                <Link href="/creador-dietas" className={`cursor-pointer ${pathname === "/creador-dietas" ? "text-white border-b-2 border-lime-400 pb-1" : "hover:text-white"}`}>Creador Dietas</Link>
-                <Link href="/progreso" className={`cursor-pointer ${pathname === "/progreso" ? "text-white border-b-2 border-lime-400 pb-1" : "hover:text-white"}`}>Progreso</Link>
-                <Link href="/calendario" className={`cursor-pointer ${pathname === "/calendario" ? "text-white border-b-2 border-lime-400 pb-1" : "hover:text-white"}`}>Calendario</Link>
-                <Link href="/ajustes" className={`cursor-pointer ${pathname === "/ajustes" ? "text-white border-b-2 border-lime-400 pb-1" : "hover:text-white"}`}>Ajustes</Link>
+            <div className="flex gap-1 text-sm font-medium text-neutral-400">
+                <Link href="/pacientes" className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${pathname === "/pacientes" ? "bg-white text-black font-bold" : "hover:text-white hover:bg-neutral-800"}`}>Pacientes</Link>
+                <Link href="/" className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${pathname === "/" ? "bg-white text-black font-bold" : "hover:text-white hover:bg-neutral-800"}`}>Panel Principal</Link>
+                <Link href="/creador-dietas" className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${pathname === "/creador-dietas" ? "bg-white text-black font-bold" : "hover:text-white hover:bg-neutral-800"}`}>Creador Dietas</Link>
+                <Link href="/progreso" className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${pathname === "/progreso" ? "bg-white text-black font-bold" : "hover:text-white hover:bg-neutral-800"}`}>Progreso</Link>
+                <Link href="/calendario" className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${pathname === "/calendario" ? "bg-white text-black font-bold" : "hover:text-white hover:bg-neutral-800"}`}>Calendario</Link>
+                <Link href="/ajustes" className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${pathname === "/ajustes" ? "bg-white text-black font-bold" : "hover:text-white hover:bg-neutral-800"}`}>Ajustes</Link>
             </div>
 
             <div className="flex items-center gap-3">
