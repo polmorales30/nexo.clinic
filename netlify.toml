@@ -1,7 +1,7 @@
 [build]
   command = "npx turbo run build --filter=web"
-  publish = ".next"
-  base = "apps/web"
+  publish = "apps/web/out"
+  base = ""
 
 [build.environment]
   NODE_VERSION = "20"
