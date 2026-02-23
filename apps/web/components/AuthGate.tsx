@@ -2,6 +2,7 @@
 
 import { useAuth } from "./AuthContext";
 import LoginScreen from "./LoginScreen";
+import Navbar from "./Navbar";
 import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
@@ -31,5 +32,5 @@ export default function AuthGate({ children }: { children: ReactNode }) {
         return <LoginScreen />;
     }
 
-    return <>{children}</>;
+    return <><Navbar />{children}</>;
 }
