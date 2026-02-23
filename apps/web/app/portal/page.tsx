@@ -2,24 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { LogIn, Eye, EyeOff, UtensilsCrossed, LogOut, Apple, ChevronDown, ChevronUp } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type PatientSession = { id: number; name: string } | null;
-
-// ─── Helper ────────────────────────────────────────────────────────────────
-function getPatients(): any[] {
-    try {
-        const raw = localStorage.getItem('nexo-patients');
-        return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
-}
-
-function getDiet(patientId: number): any {
-    try {
-        const raw = localStorage.getItem(`nexo-diet-${patientId}`);
-        return raw ? JSON.parse(raw) : null;
-    } catch { return null; }
-}
 
 // ─── Login Screen ─────────────────────────────────────────────────────────
 function PatientLogin({ onLogin }: { onLogin: (s: { id: number; name: string }) => void }) {
@@ -27,19 +13,24 @@ function PatientLogin({ onLogin }: { onLogin: (s: { id: number; name: string }) 
     const [password, setPassword] = useState('');
     const [showPass, setShowPass] = useState(false);
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
     const [shake, setShake] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        const patients = getPatients();
-        const match = patients.find((p: any) =>
-            p.portalUsername === username.trim() &&
-            p.portalPassword === password
-        );
-        if (match) {
-            onLogin({ id: match.id, name: match.name });
+        setLoading(true);
+        const { data, error: err } = await supabase
+            .from('patients')
+            .select('id, name')
+            .eq('portal_username', username.trim())
+            .eq('portal_password', password)
+            .single();
+        setLoading(false);
+        if (data) {
+            onLogin({ id: data.id, name: data.name });
         } else {
+            console.error(err);
             setError('Usuario o contraseña incorrectos.');
             setShake(true);
             setTimeout(() => setShake(false), 600);
@@ -102,10 +93,10 @@ function PatientLogin({ onLogin }: { onLogin: (s: { id: number; name: string }) 
 
                         <button
                             type="submit"
-                            className="w-full bg-lime-400 text-black font-bold py-4 rounded-xl hover:bg-lime-500 transition-colors shadow-[0_0_30px_rgba(163,230,53,0.2)] flex items-center justify-center gap-2 mt-2"
+                            disabled={loading}
+                            className="w-full bg-lime-400 text-black font-bold py-4 rounded-xl hover:bg-lime-500 disabled:opacity-60 transition-colors shadow-[0_0_30px_rgba(163,230,53,0.2)] flex items-center justify-center gap-2 mt-2"
                         >
-                            <LogIn size={18} />
-                            Entrar
+                            {loading ? <span className="inline-block w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : <><LogIn size={18} /> Entrar</>}
                         </button>
                     </form>
                 </div>
@@ -122,13 +113,25 @@ function PatientLogin({ onLogin }: { onLogin: (s: { id: number; name: string }) 
 const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 function PatientDietView({ session, onLogout }: { session: NonNullable<PatientSession>; onLogout: () => void }) {
-    const diet = getDiet(session.id);
+    const [diet, setDiet] = useState<any>(null);
+    const [dietLoading, setDietLoading] = useState(true);
     const [currentDay, setCurrentDay] = useState(daysOfWeek[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1] || 'Lunes');
     const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
 
+    useEffect(() => {
+        supabase
+            .from('diets')
+            .select('data')
+            .eq('patient_id', session.id)
+            .single()
+            .then(({ data }) => {
+                if (data) setDiet(data.data);
+                setDietLoading(false);
+            });
+    }, [session.id]);
+
     const meals = diet ? diet[currentDay] : null;
 
-    // Compute totals for current day
     let totalKcal = 0, totalP = 0, totalC = 0, totalF = 0;
     if (meals) {
         Object.values(meals).forEach((meal: any) => {
@@ -141,6 +144,12 @@ function PatientDietView({ session, onLogout }: { session: NonNullable<PatientSe
             });
         });
     }
+
+    if (dietLoading) return (
+        <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-lime-400 border-t-transparent rounded-full animate-spin" />
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-neutral-950 text-white">

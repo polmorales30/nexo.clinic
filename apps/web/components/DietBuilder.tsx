@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { GripVertical, Plus, Trash2, Search, Wand2, Calculator, Save, User, X } from 'lucide-react';
 import foodDatabase from '../data/foodDatabase.json';
+import { supabase } from '../lib/supabase';
 
 type FoodItem = {
     id: string;
@@ -90,43 +91,40 @@ export default function DietBuilder() {
     }, [calcData]);
 
     useEffect(() => {
-        const saved = localStorage.getItem('nexo-patients');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            setPatients(parsed);
-            if (parsed.length > 0 && !selectedPatient) {
-                setSelectedPatient(parsed[0].id.toString());
+        supabase.from('patients').select('id, name').order('id', { ascending: false }).then(({ data }) => {
+            if (data) {
+                setPatients(data.map((p: any) => ({ id: p.id, name: p.name })));
+                if (data.length > 0 && !selectedPatient) {
+                    setSelectedPatient(data[0]?.id.toString() ?? '');
+                }
             }
-        }
+        });
     }, []);
 
     useEffect(() => {
         if (!selectedPatient) return;
-        const savedDiet = localStorage.getItem(`nexo-diet-${selectedPatient}`);
-        if (savedDiet) {
-            setWeeklyDiet(JSON.parse(savedDiet));
-        } else {
-            setWeeklyDiet(getInitialWeeklyDiet());
-        }
-
-        const savedGoals = localStorage.getItem(`nexo-goals-${selectedPatient}`);
-        if (savedGoals) {
-            setUserGoals(JSON.parse(savedGoals));
-        } else {
-            setUserGoals({ kcal: 2000, p: 150, c: 200, f: 65 });
-        }
-
-        const savedCalc = localStorage.getItem(`nexo-calc-${selectedPatient}`);
-        if (savedCalc) {
-            setCalcData(JSON.parse(savedCalc));
-        } else {
-            setCalcData({
-                age: 30, gender: 'Hombre', weight: 75, height: 175,
-                activity: 1.2, goal: 0,
-                protPercent: 30, fatPercent: 35
-            });
-        }
+        supabase.from('diets').select('data').eq('patient_id', selectedPatient).single().then(({ data }) => {
+            if (data?.data) {
+                const d = data.data as any;
+                setWeeklyDiet(d.weeklyDiet ?? getInitialWeeklyDiet());
+                setUserGoals(d.userGoals ?? { kcal: 2000, p: 150, c: 200, f: 65 });
+                setCalcData(d.calcData ?? {
+                    age: 30, gender: 'Hombre', weight: 75, height: 175,
+                    activity: 1.2, goal: 0,
+                    protPercent: 30, fatPercent: 35
+                });
+            } else {
+                setWeeklyDiet(getInitialWeeklyDiet());
+                setUserGoals({ kcal: 2000, p: 150, c: 200, f: 65 });
+                setCalcData({
+                    age: 30, gender: 'Hombre', weight: 75, height: 175,
+                    activity: 1.2, goal: 0,
+                    protPercent: 30, fatPercent: 35
+                });
+            }
+        });
     }, [selectedPatient]);
+
 
     const meals = weeklyDiet[currentDay] || initialDailyMeals;
 
@@ -279,14 +277,16 @@ export default function DietBuilder() {
         });
     };
 
-    const handleAssignDiet = () => {
+    const handleAssignDiet = async () => {
         if (!selectedPatient) {
             alert('Selecciona un paciente en el menú superior para guardar su dieta.');
             return;
         }
-        localStorage.setItem(`nexo-diet-${selectedPatient}`, JSON.stringify(weeklyDiet));
-        localStorage.setItem(`nexo-goals-${selectedPatient}`, JSON.stringify(userGoals));
-        localStorage.setItem(`nexo-calc-${selectedPatient}`, JSON.stringify(calcData));
+        const payload = { weeklyDiet, userGoals, calcData };
+        await supabase.from('diets').upsert(
+            { patient_id: Number(selectedPatient), data: payload, updated_at: new Date().toISOString() },
+            { onConflict: 'patient_id' }
+        );
         alert('Dieta y objetivos guardados correctamente.');
     };
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Plus, MoreVertical, Edit2, Trash2, Calendar as CalendarIcon, FileText, X, Key, ClipboardList, ChevronDown, ChevronUp, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 type ClinicalData = {
     email?: string;
@@ -59,23 +60,31 @@ const initialPatients: Patient[] = [
 ];
 
 export default function PacientesPage() {
-    const [patients, setPatients] = useState<Patient[]>(initialPatients);
+    const [patients, setPatients] = useState<Patient[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
-        const saved = localStorage.getItem('nexo-patients');
-        if (saved) {
-            setPatients(JSON.parse(saved));
-        }
-        setIsLoaded(true);
+        supabase.from('patients').select('*').order('id', { ascending: false }).then(({ data }) => {
+            if (data) {
+                setPatients(data.map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    age: p.age ?? 0,
+                    goal: p.goal ?? '',
+                    lastVisit: p.last_visit ?? '-',
+                    nextVisit: p.next_visit ?? '-',
+                    status: p.status ?? 'Activo',
+                    history: p.history ?? '',
+                    clinicalData: p.clinical_data ?? {},
+                    consultRecords: p.consult_records ?? [],
+                    portalUsername: p.portal_username ?? '',
+                    portalPassword: p.portal_password ?? '',
+                })));
+            }
+            setIsLoaded(true);
+        });
     }, []);
-
-    useEffect(() => {
-        if (isLoaded) {
-            localStorage.setItem('nexo-patients', JSON.stringify(patients));
-        }
-    }, [patients, isLoaded]);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -154,7 +163,8 @@ export default function PacientesPage() {
             return b.id - a.id;
         });
 
-    const handleDelete = (id: number) => {
+    const handleDelete = async (id: number) => {
+        await supabase.from('patients').delete().eq('id', id);
         setPatients(patients.filter(p => p.id !== id));
         setDeletingPatient(null);
         setIsHistoryModalOpen(false);
@@ -207,8 +217,12 @@ export default function PacientesPage() {
         setIsHistoryModalOpen(false);
     };
 
-    const handleSavePortalCreds = () => {
+    const handleSavePortalCreds = async () => {
         if (!viewingPatient) return;
+        await supabase.from('patients').update({
+            portal_username: portalCreds.username,
+            portal_password: portalCreds.password,
+        }).eq('id', viewingPatient.id);
         setPatients(patients.map(p => p.id === viewingPatient.id ? { ...p, portalUsername: portalCreds.username, portalPassword: portalCreds.password } : p));
         setPortalSaved(true);
         setTimeout(() => setPortalSaved(false), 2000);
@@ -234,30 +248,46 @@ export default function PacientesPage() {
         setClinicalData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (editingPatient) {
-            // Edit
-            setPatients(patients.map(p => p.id === editingPatient.id ? {
-                ...p,
+            const { data } = await supabase.from('patients').update({
                 name: formData.name,
                 age: Number(formData.age),
                 goal: formData.goal,
-                status: formData.status
-            } : p));
+                status: formData.status,
+            }).eq('id', editingPatient.id).select().single();
+            if (data) {
+                setPatients(patients.map(p => p.id === editingPatient.id ? {
+                    ...p,
+                    name: formData.name,
+                    age: Number(formData.age),
+                    goal: formData.goal,
+                    status: formData.status
+                } : p));
+            }
         } else {
-            // Add
-            const newPatient: Patient = {
-                id: Date.now(),
+            const { data } = await supabase.from('patients').insert({
                 name: formData.name,
                 age: Number(formData.age),
                 goal: formData.goal,
-                lastVisit: '-',
-                nextVisit: '-',
-                status: formData.status
-            };
-            setPatients([...patients, newPatient]);
+                status: formData.status,
+                last_visit: '-',
+                next_visit: '-',
+            }).select().single();
+            if (data) {
+                const newPatient: Patient = {
+                    id: data.id,
+                    name: data.name,
+                    age: data.age,
+                    goal: data.goal,
+                    lastVisit: data.last_visit ?? '-',
+                    nextVisit: data.next_visit ?? '-',
+                    status: data.status,
+                };
+                setPatients([newPatient, ...patients]);
+            }
         }
         setIsModalOpen(false);
     };
