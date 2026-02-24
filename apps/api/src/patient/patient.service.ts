@@ -4,13 +4,13 @@ import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PatientService {
-    constructor(private prisma: PrismaService) { }
+  constructor(private prisma: PrismaService) {}
 
-    create(data: Prisma.PatientCreateInput) {
-        return this.prisma.patient.create({ data });
-    }
+  create(data: Prisma.PatientCreateInput) {
+    return this.prisma.patient.create({ data });
+  }
 
-    findAll(tenantId: string) {
-        return this.prisma.patient.findMany({ where: { tenantId } });
-    }
+  findAll(tenantId: string) {
+    return this.prisma.patient.findMany({ where: { tenantId } });
+  }
 }

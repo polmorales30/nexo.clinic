@@ -1,8 +1,108 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Clock, MapPin, User, Video, X, Trash2, Search, Plus, LineChart, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { supabase } from "../../lib/supabase";
+
+// ---------------------------------------------------------------------------
+// useDragScroll — Premium drag-to-scroll with momentum / inertia
+// direction: 'x' for horizontal (week/day), 'y' for vertical (month)
+// ---------------------------------------------------------------------------
+function useDragScroll(direction: 'x' | 'y' = 'y') {
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const el = ref.current;
+        if (!el) return;
+
+        let isDown = false;
+        let startPos = 0;
+        let scrollStart = 0;
+        let velHistory: { v: number; t: number }[] = [];
+        let rafId: number;
+
+        const getPos = (e: MouseEvent) => direction === 'x' ? e.clientX : e.clientY;
+        const getScroll = () => direction === 'x' ? el.scrollLeft : el.scrollTop;
+        const setScroll = (v: number) => {
+            if (direction === 'x') el.scrollLeft = v;
+            else el.scrollTop = v;
+        };
+
+        const onMouseDown = (e: MouseEvent) => {
+            // Only respond to primary button; ignore clicks on interactive children
+            if (e.button !== 0) return;
+            const target = e.target as HTMLElement;
+            if (target.closest('button, a, select, input, [draggable="true"]')) return;
+
+            isDown = true;
+            startPos = getPos(e);
+            scrollStart = getScroll();
+            velHistory = [];
+            cancelAnimationFrame(rafId);
+            el.style.cursor = 'grabbing';
+            el.style.userSelect = 'none';
+            e.preventDefault();
+        };
+
+        const onMouseMove = (e: MouseEvent) => {
+            if (!isDown) return;
+            const delta = startPos - getPos(e);
+            setScroll(scrollStart + delta);
+
+            const now = performance.now();
+            velHistory.push({ v: delta, t: now });
+            // Keep only last 100ms of history
+            velHistory = velHistory.filter(h => now - h.t < 100);
+        };
+
+        const onMouseUp = () => {
+            if (!isDown) return;
+            isDown = false;
+            el.style.cursor = 'grab';
+            el.style.userSelect = '';
+
+            // Calculate average velocity
+            if (velHistory.length < 2) return;
+            const first = velHistory[0]!;
+            const last = velHistory[velHistory.length - 1]!;
+            const dt = last.t - first.t;
+            if (dt === 0) return;
+            const velocity = (last.v - first.v) / dt * 16; // px per frame (60fps)
+
+            // Momentum animation
+            let momentum = velocity * 8;
+            const friction = 0.92;
+
+            const animate = () => {
+                if (Math.abs(momentum) < 0.5) return;
+                setScroll(getScroll() + momentum);
+                momentum *= friction;
+                rafId = requestAnimationFrame(animate);
+            };
+            rafId = requestAnimationFrame(animate);
+        };
+
+        const onMouseLeave = () => {
+            if (isDown) onMouseUp();
+        };
+
+        el.style.cursor = 'grab';
+        el.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+        el.addEventListener('mouseleave', onMouseLeave);
+
+        return () => {
+            cancelAnimationFrame(rafId);
+            el.removeEventListener('mousedown', onMouseDown);
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+            el.removeEventListener('mouseleave', onMouseLeave);
+        };
+    }, [direction]);
+
+    return ref;
+}
 
 const timeSlots = Array.from({ length: 18 }, (_, i) => `${String(i + 6).padStart(2, '0')}:00`);
 
@@ -76,6 +176,10 @@ export default function CalendarioPage() {
     const [currentTimePercent, setCurrentTimePercent] = useState(0);
     const [isLoaded, setIsLoaded] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Premium drag-scroll refs
+    const weekScrollRef = useDragScroll('y');   // week/day view: vertical scroll
+    const monthScrollRef = useDragScroll('y');  // month view: vertical scroll
 
     useEffect(() => {
         const updateCurrentTime = () => {
@@ -254,15 +358,21 @@ export default function CalendarioPage() {
         const targetDate = weekDates[dayIndex];
         const newDateStr = formatDateToStr(targetDate!);
 
-        const { data, error } = await supabase
+        // Always update locally first
+        const updated = appointments.map(apt =>
+            apt.id === aptId
+                ? { ...apt, time: newTime, dateStr: newDateStr, day: dayIndex }
+                : apt
+        );
+        setAppointments(updated);
+        localStorage.setItem('nexo-appointments', JSON.stringify(updated));
+
+        // Try to sync with Supabase (optional, non-blocking)
+        supabase
             .from('appointments')
             .update({ time: newTime, dateStr: newDateStr, day: dayIndex })
             .eq('id', aptId)
-            .select();
-
-        if (!error && data) {
-            setAppointments(prev => prev.map(apt => apt.id === aptId ? data[0] : apt));
-        }
+            .then(() => { });
     };
     return (
         <div className="min-h-[calc(100vh-80px)] bg-neutral-950 text-white p-8 overflow-hidden flex flex-col">
@@ -340,7 +450,17 @@ export default function CalendarioPage() {
                                     <div key={d} className="py-3 text-center text-xs font-bold text-neutral-500 uppercase tracking-wider border-r border-neutral-800 last:border-0">{d}</div>
                                 ))}
                             </div>
-                            <div className="flex-1 grid overflow-hidden" style={{ gridTemplateRows: `repeat(${weeks.length}, 1fr)` }}>
+                            <div
+                                ref={monthScrollRef}
+                                className="flex-1 grid overflow-y-auto"
+                                style={{
+                                    gridTemplateRows: `repeat(${weeks.length}, 1fr)`,
+                                    // Hide scrollbar visually but keep functionality
+                                    scrollbarWidth: 'none',
+                                    msOverflowStyle: 'none',
+                                    WebkitOverflowScrolling: 'touch',
+                                } as React.CSSProperties}
+                            >
                                 {weeks.map((week, wi) => (
                                     <div key={wi} className="grid grid-cols-7 border-b border-neutral-800 last:border-0" style={{ minHeight: '100px' }}>
                                         {week.map((date, di) => {
@@ -351,13 +471,14 @@ export default function CalendarioPage() {
                                             return (
                                                 <div
                                                     key={di}
-                                                    className={`border-r border-neutral-800 last:border-0 p-2 cursor-pointer hover:bg-neutral-800/40 transition-colors flex flex-col gap-1`}
+                                                    className={`border-r border-neutral-800 last:border-0 p-2 hover:bg-neutral-800/40 transition-colors flex flex-col gap-1`}
+                                                    style={{ cursor: 'default' }}
                                                     onClick={() => {
                                                         setCurrentWeekDate(date);
                                                         setViewMode('day');
                                                     }}
                                                 >
-                                                    <span className={`text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center ${isToday ? 'bg-lime-400 text-black' : 'text-neutral-400 hover:text-white'}`}>
+                                                    <span className={`text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center cursor-pointer ${isToday ? 'bg-lime-400 text-black' : 'text-neutral-400 hover:text-white'}`}>
                                                         {date.getDate()}
                                                     </span>
                                                     <div className="flex flex-col gap-1 overflow-hidden">
@@ -384,38 +505,75 @@ export default function CalendarioPage() {
                 })()
             ) : (
                 // ---- WEEK / DAY VIEW ----
-                <div className="flex-1 bg-neutral-900 border border-neutral-800 rounded-2xl flex flex-col min-h-0 overflow-hidden">
-
+                <div className="flex-1 bg-neutral-950 border border-neutral-800/50 rounded-2xl flex flex-col min-h-0 overflow-hidden">
                     {/* Days Header */}
-                    <div className={`grid ${viewMode === 'day' ? 'grid-cols-2' : 'grid-cols-8'} border-b border-neutral-800 bg-neutral-900/50 shrink-0`}>
-                        <div className="p-4 border-r border-neutral-800 text-center text-sm font-medium text-neutral-500 flex items-center justify-center">
-                            GMT+1
+                    <div
+                        className="border-b border-neutral-800/60 bg-neutral-950 shrink-0 grid"
+                        style={{ gridTemplateColumns: viewMode === 'day' ? '56px 1fr' : '56px repeat(7, 1fr)' }}
+                    >
+                        <div className="w-14 border-r border-neutral-800/60 flex items-end justify-center pb-3">
+                            <span className="text-[9px] font-medium text-neutral-600">GMT+1</span>
                         </div>
-                        {displayDates.map((date, i) => (
-                            <div key={i} className={`p-4 border-r border-neutral-800 font-semibold ${formatDateToStr(new Date()) === formatDateToStr(date) ? 'text-lime-400' : 'text-neutral-300'}`}>
-                                <div className="text-sm font-normal text-neutral-500 mb-1">{dayNames[date.getDay()]}</div>
-                                <div className="text-2xl">{date.getDate()}</div>
-                            </div>
-                        ))}
+                        {displayDates.map((date, i) => {
+                            const isToday = formatDateToStr(new Date()) === formatDateToStr(date);
+                            return (
+                                <div key={i} className={`py-3 border-r border-neutral-800/60 flex flex-col items-center ${i === displayDates.length - 1 ? 'border-r-0' : ''}`}>
+                                    <div className="text-[11px] font-medium text-neutral-500 mb-1 uppercase tracking-wider">{(dayNames[date.getDay()] ?? '').slice(0, 3)}</div>
+                                    <div className={`text-2xl font-bold w-9 h-9 flex items-center justify-center rounded-full ${isToday ? 'bg-lime-400 text-black' : 'text-neutral-200'
+                                        }`}>{date.getDate()}</div>
+                                </div>
+                            );
+                        })}
                     </div>
 
-                    {/* Time Grid */}
-                    <div className="flex-1 overflow-y-auto">
-                        <div className={`relative grid ${viewMode === 'day' ? 'grid-cols-2' : 'grid-cols-8'} h-[864px]`}>
-                            {/* Hour lines (Background) — one per 80px slot */}
+                    {/* Time Grid — drag-scrollable vertically */}
+                    <div
+                        ref={weekScrollRef}
+                        className="flex-1 overflow-y-auto"
+                        style={{
+                            scrollbarWidth: 'none',
+                            msOverflowStyle: 'none',
+                            WebkitOverflowScrolling: 'touch',
+                        } as React.CSSProperties}
+                    >
+                        <div
+                            className="relative grid h-[1260px]"
+                            style={{ gridTemplateColumns: viewMode === 'day' ? '56px 1fr' : '56px repeat(7, 1fr)' }}
+                        >
+                            {/* Hour lines + alternating row backgrounds */}
                             <div className="absolute inset-0 pointer-events-none">
                                 {timeSlots.map((time, i) => (
-                                    <div key={time} className="absolute left-0 right-0 border-b border-neutral-800/50" style={{ top: `${((i + 1) / timeSlots.length) * 100}%` }} />
+                                    <div
+                                        key={time}
+                                        className="absolute left-0 right-0"
+                                        style={{ top: `${(i / timeSlots.length) * 100}%`, height: `${(1 / timeSlots.length) * 100}%` }}
+                                    >
+                                        {/* Alternating row background */}
+                                        {i % 2 === 1 && <div className="absolute inset-0 bg-neutral-900/30" />}
+                                        {/* Hour divider line */}
+                                        <div className="absolute bottom-0 left-14 right-0 border-b border-neutral-800/40" />
+                                        {/* Half-hour divider */}
+                                        <div className="absolute border-b border-neutral-800/20 border-dashed left-14 right-0" style={{ top: '50%' }} />
+                                    </div>
                                 ))}
                             </div>
 
-                            {/* Time Labels Column - each slot is exactly 80px, label at the top where the hour line is */}
-                            <div className="border-r border-neutral-800">
-                                {timeSlots.map(time => (
-                                    <div key={time} className="h-12 flex items-center justify-end pr-3">
-                                        <span className="text-xs font-medium text-neutral-400">{time}</span>
-                                    </div>
-                                ))}
+                            {/* Time Labels Column */}
+                            <div className="border-r border-neutral-800/60 relative z-10 w-16">
+                                {timeSlots.map((time, i) => {
+                                    const hour = parseInt(time.split(':')[0] || '0');
+                                    const ampm = hour >= 12 ? 'PM' : 'AM';
+                                    const hour12 = hour % 12 || 12;
+                                    const displayTime = `${hour12} ${ampm}`;
+
+                                    return (
+                                        <div key={time} className="h-[70px] relative">
+                                            <span className="absolute -top-[9px] right-3 text-[11px] font-medium text-neutral-400 select-none uppercase whitespace-nowrap tabular-nums tracking-tight">
+                                                {i === 0 ? '' : displayTime}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
                             {/* Days Columns */}
@@ -427,7 +585,8 @@ export default function CalendarioPage() {
                                 return (
                                     <div
                                         key={dayIndex}
-                                        className="border-r border-neutral-800 relative"
+                                        className={`border-r border-neutral-800/40 relative last:border-r-0 ${isToday ? 'bg-lime-400/[0.02]' : ''
+                                            }`}
                                         onDragOver={handleDragOver}
                                         onDrop={(e) => handleDrop(e, dayIndex)}
                                     >
@@ -446,42 +605,53 @@ export default function CalendarioPage() {
                                             const hourIndex = timeSlots.indexOf(apt.time);
                                             const topPercent = (hourIndex / timeSlots.length) * 100;
                                             const heightPercent = (apt.duration / timeSlots.length) * 100;
-                                            const { color, icon } = getAppointmentStyle(apt.type);
+                                            const { color } = getAppointmentStyle(apt.type);
 
-                                            return (
-                                                <div
-                                                    key={apt.id}
-                                                    draggable
-                                                    onDragStart={(e) => handleDragStart(e, apt.id)}
-                                                    onClick={() => openEditModal(apt)}
-                                                    className={`absolute left-2 right-2 rounded-xl border p-2.5 flex flex-col justify-between cursor-grab hover:opacity-90 hover:scale-[1.02] shadow-sm hover:shadow-md transition-all z-20 overflow-hidden ${color}`}
-                                                    style={{ top: `${topPercent}%`, height: `calc(${heightPercent}% - 4px)` }}
-                                                >
-                                                    <div className="flex justify-between items-start">
-                                                        <div>
-                                                            <div className="font-bold text-sm mb-1 text-white shadow-sm">{apt.patient}</div>
-                                                            <div className="text-xs opacity-90 flex items-center gap-1 font-medium">
-                                                                {icon} {apt.type}
-                                                            </div>
+                                            return (() => {
+                                                const iconSize = 10;
+                                                const currentIcon = apt.type.toLowerCase().includes('online') ? <Video size={iconSize} className="text-blue-400" /> :
+                                                    apt.type.toLowerCase().includes('presencial') ? <MapPin size={iconSize} className="text-emerald-400" /> :
+                                                        <Clock size={iconSize} className="text-yellow-400" />;
+
+                                                return (
+                                                    <div
+                                                        key={apt.id}
+                                                        draggable
+                                                        onDragStart={(e) => handleDragStart(e, apt.id)}
+                                                        onClick={() => openEditModal(apt)}
+                                                        className={`absolute inset-x-0.5 rounded-lg border px-2 py-1.5 flex flex-col cursor-grab hover:opacity-90 hover:scale-[1.02] shadow-sm hover:shadow-md transition-all z-20 min-h-[66px] overflow-hidden ${color}`}
+                                                        style={{ top: `${topPercent}%`, height: `calc(${heightPercent}% - 2px)` }}
+                                                    >
+                                                        {/* Top row: Patient Name & Delete Button */}
+                                                        <div className="flex justify-between items-center gap-2 w-full leading-none mb-0.5">
+                                                            <div className="font-bold text-[11.5px] text-white leading-tight" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 'calc(100% - 22px)' }}>{apt.patient}</div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault();
+                                                                    e.stopPropagation();
+                                                                    setDeletingAppointment(apt.id);
+                                                                }}
+                                                                className="shrink-0 w-4 h-4 flex items-center justify-center bg-black/10 hover:bg-black/30 rounded text-white/40 hover:text-red-400 transition-colors z-10"
+                                                                title="Eliminar Cita"
+                                                            >
+                                                                <Trash2 size={11} />
+                                                            </button>
                                                         </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                setDeletingAppointment(apt.id);
-                                                            }}
-                                                            className="p-1.5 bg-black/20 hover:bg-black/40 rounded-md text-white/50 hover:text-red-400 transition-colors z-10"
-                                                            title="Eliminar Cita"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                        </button>
+
+                                                        {/* Middle row: Type */}
+                                                        <div className="flex items-center gap-1.5 leading-none mb-0.5" style={{ minHeight: '12px' }}>
+                                                            <span className="shrink-0 opacity-80">{currentIcon}</span>
+                                                            <span className="text-[10px] font-medium text-white/75" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{apt.type}</span>
+                                                        </div>
+
+                                                        {/* Bottom row: Time */}
+                                                        <div className="mt-auto text-[10px] font-semibold text-white/90 leading-none">
+                                                            {apt.time} - {timeSlots[timeSlots.indexOf(apt.time) + Math.floor(apt.duration)] || '23:59'}
+                                                        </div>
                                                     </div>
-                                                    <div className="text-xs font-medium opacity-70">
-                                                        {apt.time} - {timeSlots[timeSlots.indexOf(apt.time) + Math.floor(apt.duration)] || '23:59'}
-                                                    </div>
-                                                </div>
-                                            );
+                                                );
+                                            })();
                                         })}
                                     </div>
                                 );

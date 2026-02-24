@@ -4,26 +4,28 @@ import { Prisma } from '@prisma/client';
 
 @Controller('anamnesis')
 export class AnamnesisController {
-    constructor(private readonly anamnesisService: AnamnesisService) { }
+  constructor(private readonly anamnesisService: AnamnesisService) {}
 
-    @Post()
-    create(@Body() createDto: Prisma.AnamnesisCreateInput) {
-        return this.anamnesisService.create(createDto);
-    }
+  @Post()
+  create(@Body() createDto: Prisma.AnamnesisCreateInput) {
+    return this.anamnesisService.create(createDto);
+  }
 
-    @Get('patient/:patientId')
-    findAll(@Param('patientId') patientId: string) {
-        return this.anamnesisService.findAll(patientId);
-    }
+  @Get('patient/:patientId')
+  findAll(@Param('patientId') patientId: string) {
+    return this.anamnesisService.findAll(patientId);
+  }
 
-    @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.anamnesisService.findOne(id);
-    }
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.anamnesisService.findOne(id);
+  }
 
-    @Patch(':id')
-    update(@Param('id') id: string, @Body() updateDto: Prisma.AnamnesisUpdateInput) {
-        return this.anamnesisService.update(id, updateDto);
-    }
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() updateDto: Prisma.AnamnesisUpdateInput,
+  ) {
+    return this.anamnesisService.update(id, updateDto);
+  }
 }
-

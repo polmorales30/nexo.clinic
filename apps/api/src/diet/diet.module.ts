@@ -7,6 +7,6 @@ import { PrismaModule } from '../prisma/prisma.module';
 @Module({
   imports: [AiModule, PrismaModule],
   controllers: [DietController],
-  providers: [DietService]
+  providers: [DietService],
 })
-export class DietModule { }
+export class DietModule {}

@@ -4,15 +4,15 @@ import { Prisma } from '@prisma/client';
 
 @Controller('patients')
 export class PatientController {
-    constructor(private readonly patientService: PatientService) { }
+  constructor(private readonly patientService: PatientService) {}
 
-    @Post()
-    create(@Body() createPatientDto: Prisma.PatientCreateInput) {
-        return this.patientService.create(createPatientDto);
-    }
+  @Post()
+  create(@Body() createPatientDto: Prisma.PatientCreateInput) {
+    return this.patientService.create(createPatientDto);
+  }
 
-    @Get('tenant/:tenantId')
-    findAll(@Param('tenantId') tenantId: string) {
-        return this.patientService.findAll(tenantId);
-    }
+  @Get('tenant/:tenantId')
+  findAll(@Param('tenantId') tenantId: string) {
+    return this.patientService.findAll(tenantId);
+  }
 }

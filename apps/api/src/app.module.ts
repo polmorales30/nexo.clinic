@@ -12,7 +12,17 @@ import { AiModule } from './ai/ai.module';
 import { DietModule } from './diet/diet.module';
 
 @Module({
-  imports: [PatientModule, AnamnesisModule, MetricModule, PrismaModule, AppointmentModule, StripeModule, FoodModule, AiModule, DietModule],
+  imports: [
+    PatientModule,
+    AnamnesisModule,
+    MetricModule,
+    PrismaModule,
+    AppointmentModule,
+    StripeModule,
+    FoodModule,
+    AiModule,
+    DietModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
