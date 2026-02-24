@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Clock, MapPin, User, Video, X, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, MapPin, User, Video, X, Trash2, Search, Plus, LineChart, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { supabase } from "../../lib/supabase";
 
 const timeSlots = Array.from({ length: 18 }, (_, i) => `${String(i + 6).padStart(2, '0')}:00`);
 
@@ -77,49 +78,66 @@ export default function CalendarioPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
-
         const updateCurrentTime = () => {
             const now = new Date();
             const hours = now.getHours();
             const minutes = now.getMinutes();
-            // Timeline starts at 06:00 (index 0)
             const timeIndex = (hours - 6) + (minutes / 60);
             setCurrentTimePercent(Math.max(0, Math.min(100, (timeIndex / timeSlots.length) * 100)));
         };
 
         updateCurrentTime();
-        const interval = setInterval(updateCurrentTime, 60000); // update every minute
+        const interval = setInterval(updateCurrentTime, 60000);
 
-        const savedAppts = localStorage.getItem('nexo-appointments');
-        if (savedAppts) setAppointments(JSON.parse(savedAppts));
+        async function loadData() {
+            // Load Patients — same pattern as DietBuilder which works
+            supabase.from('patients').select('id, name').order('id', { ascending: false }).then(({ data: pts, error: pError }) => {
+                if (!pError && pts && pts.length > 0) {
+                    setPatients(pts.map((p: any) => ({ id: p.id, name: p.name })));
+                } else {
+                    // Fallback: localStorage
+                    const saved = localStorage.getItem('nexo-patients');
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        setPatients(parsed.map((p: any) => ({ id: p.id, name: p.name })));
+                    }
+                }
+            });
 
-        const savedPts = localStorage.getItem('nexo-patients');
-        if (savedPts) setPatients(JSON.parse(savedPts));
+            // Load Appointments from Supabase, fallback to localStorage
+            supabase.from('appointments').select('*').then(({ data: appts, error: aError }) => {
+                if (!aError && appts && appts.length > 0) {
+                    setAppointments(appts);
+                } else {
+                    const savedAppts = localStorage.getItem('nexo-appointments');
+                    if (savedAppts) {
+                        try { setAppointments(JSON.parse(savedAppts)); } catch { }
+                    }
+                    // If nothing in localStorage either, keep initialAppointments
+                }
+                setIsLoaded(true);
+            });
+        }
 
-        setIsLoaded(true);
+        loadData();
+        return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
-        if (isLoaded) {
-            localStorage.setItem('nexo-appointments', JSON.stringify(appointments));
-        }
+        // We will save to Supabase directly on handleSave, so no need for this specific effect
     }, [appointments, isLoaded]);
 
     const [formData, setFormData] = useState({
-        patient: '', day: '0', time: '10:00', type: 'Revisión Online'
+        patient: '', date: new Date().toISOString().split('T')[0], time: '10:00', type: 'Revisión Online'
     });
     const [editingAppointment, setEditingAppointment] = useState<number | null>(null);
     const [deletingAppointment, setDeletingAppointment] = useState<number | null>(null);
 
     const openEditModal = (apt: Appointment) => {
         setEditingAppointment(apt.id);
-        const dayIndex = weekDates.findIndex(d => formatDateToStr(d) === apt.dateStr) !== -1
-            ? weekDates.findIndex(d => formatDateToStr(d) === apt.dateStr)
-            : apt.day;
-
         setFormData({
             patient: apt.patient,
-            day: dayIndex.toString(),
+            date: apt.dateStr || new Date().toISOString().split('T')[0],
             time: apt.time,
             type: apt.type
         });
@@ -127,39 +145,53 @@ export default function CalendarioPage() {
     };
 
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const selectedDate = weekDates[Number(formData.day)];
-        const targetDateStr = formatDateToStr(selectedDate!);
+        const dateStr = formData.date || new Date().toISOString().split('T')[0] || '';
+        const payload = {
+            patient: formData.patient,
+            dateStr,
+            time: formData.time,
+            type: formData.type,
+            duration: 1,
+            day: new Date(dateStr + 'T12:00:00').getDay()
+        };
 
         if (editingAppointment) {
-            setAppointments(appointments.map(apt => {
-                if (apt.id === editingAppointment) {
-                    const modified = {
-                        ...apt,
-                        patient: formData.patient,
-                        day: Number(formData.day),
-                        dateStr: targetDateStr,
-                        time: formData.time,
-                        type: formData.type
-                    };
-                    return modified;
-                }
-                return apt;
-            }));
-        } else {
-            const newAppointment: Appointment = {
-                id: Date.now(),
-                patient: formData.patient,
-                day: Number(formData.day),
-                dateStr: targetDateStr,
-                time: formData.time,
-                duration: 1,
-                type: formData.type
-            };
+            const { data, error } = await supabase
+                .from('appointments')
+                .update(payload)
+                .eq('id', editingAppointment)
+                .select();
 
-            setAppointments([...appointments, newAppointment]);
+            if (!error && data && data.length > 0) {
+                const updated = appointments.map(apt => apt.id === editingAppointment ? { ...apt, ...payload } : apt);
+                setAppointments(updated);
+                localStorage.setItem('nexo-appointments', JSON.stringify(updated));
+            } else {
+                // Supabase not available — update locally
+                const updated = appointments.map(apt => apt.id === editingAppointment ? { ...apt, ...payload } : apt);
+                setAppointments(updated);
+                localStorage.setItem('nexo-appointments', JSON.stringify(updated));
+            }
+        } else {
+            const { data, error } = await supabase
+                .from('appointments')
+                .insert([payload])
+                .select();
+
+            if (!error && data && data.length > 0) {
+                const newList = [...appointments, data[0]];
+                setAppointments(newList);
+                localStorage.setItem('nexo-appointments', JSON.stringify(newList));
+            } else {
+                // Supabase not available — save locally
+                const localAppt = { ...payload, id: Date.now() };
+                const newList = [...appointments, localAppt];
+                setAppointments(newList);
+                localStorage.setItem('nexo-appointments', JSON.stringify(newList));
+            }
         }
         setIsModalOpen(false);
     };
@@ -186,8 +218,12 @@ export default function CalendarioPage() {
 
     const goToday = () => setCurrentWeekDate(new Date());
 
-    const handleDelete = (id: number) => {
-        setAppointments(appointments.filter(a => a.id !== id));
+    const handleDelete = async (id: number) => {
+        const { error } = await supabase.from('appointments').delete().eq('id', id);
+        // Always remove locally regardless of Supabase outcome
+        const updated = appointments.filter(a => a.id !== id);
+        setAppointments(updated);
+        localStorage.setItem('nexo-appointments', JSON.stringify(updated));
         setDeletingAppointment(null);
     };
 
@@ -201,7 +237,7 @@ export default function CalendarioPage() {
         e.dataTransfer.dropEffect = 'move';
     };
 
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>, dayIndex: number) => {
+    const handleDrop = async (e: React.DragEvent<HTMLDivElement>, dayIndex: number) => {
         e.preventDefault();
         const aptIdStr = e.dataTransfer.getData('text/plain');
         if (!aptIdStr) return;
@@ -215,23 +251,18 @@ export default function CalendarioPage() {
         if (newHourIndex >= timeSlots.length) newHourIndex = timeSlots.length - 1;
 
         const newTime = timeSlots[newHourIndex] || '06:00';
+        const targetDate = weekDates[dayIndex];
+        const newDateStr = formatDateToStr(targetDate!);
 
-        setAppointments(prev => {
-            const updated = prev.map(apt => {
-                if (apt.id === aptId) {
-                    const targetDate = weekDates[dayIndex];
-                    const modified = {
-                        ...apt,
-                        day: dayIndex,
-                        time: newTime,
-                        dateStr: formatDateToStr(targetDate!)
-                    };
-                    return modified;
-                }
-                return apt;
-            });
-            return updated;
-        });
+        const { data, error } = await supabase
+            .from('appointments')
+            .update({ time: newTime, dateStr: newDateStr, day: dayIndex })
+            .eq('id', aptId)
+            .select();
+
+        if (!error && data) {
+            setAppointments(prev => prev.map(apt => apt.id === aptId ? data[0] : apt));
+        }
     };
     return (
         <div className="min-h-[calc(100vh-80px)] bg-neutral-950 text-white p-8 overflow-hidden flex flex-col">
@@ -275,7 +306,7 @@ export default function CalendarioPage() {
 
                     <button onClick={() => {
                         setEditingAppointment(null);
-                        setFormData({ patient: '', day: '0', time: '10:00', type: 'Revisión Online' });
+                        setFormData({ patient: '', date: new Date().toISOString().split('T')[0] || '', time: '10:00', type: 'Revisión Online' });
                         setIsModalOpen(true);
                     }} className="bg-lime-400 text-black px-4 py-2 rounded-xl font-bold hover:bg-lime-500 transition-colors shadow-[0_0_15px_rgba(163,230,53,0.3)] ml-4">
                         Nueva Cita
@@ -370,19 +401,19 @@ export default function CalendarioPage() {
 
                     {/* Time Grid */}
                     <div className="flex-1 overflow-y-auto">
-                        <div className={`relative grid ${viewMode === 'day' ? 'grid-cols-2' : 'grid-cols-8'} min-h-[1440px]`}>
-                            {/* Hour lines (Background) */}
-                            <div className="absolute inset-0 pointer-events-none flex flex-col">
-                                {timeSlots.map((time) => (
-                                    <div key={time} className="flex-1 border-b border-neutral-800/50 last:border-0 w-full" />
+                        <div className={`relative grid ${viewMode === 'day' ? 'grid-cols-2' : 'grid-cols-8'} h-[1440px]`}>
+                            {/* Hour lines (Background) — one per 80px slot */}
+                            <div className="absolute inset-0 pointer-events-none">
+                                {timeSlots.map((time, i) => (
+                                    <div key={time} className="absolute left-0 right-0 border-b border-neutral-800/50" style={{ top: `${((i + 1) / timeSlots.length) * 100}%` }} />
                                 ))}
                             </div>
 
-                            {/* Time Labels Column */}
-                            <div className="border-r border-neutral-800 flex flex-col">
+                            {/* Time Labels Column - each slot is exactly 80px, label at the top where the hour line is */}
+                            <div className="border-r border-neutral-800">
                                 {timeSlots.map(time => (
-                                    <div key={time} className="flex-1 flex items-start justify-center p-2">
-                                        <span className="text-xs font-medium text-neutral-500 -mt-3 bg-neutral-900 px-2">{time}</span>
+                                    <div key={time} className="h-20 flex items-start justify-end pr-3 pt-1">
+                                        <span className="text-xs font-medium text-neutral-400">{time}</span>
                                     </div>
                                 ))}
                             </div>
@@ -482,39 +513,40 @@ export default function CalendarioPage() {
                                         value={formData.patient}
                                         onChange={(e) => setFormData({ ...formData, patient: e.target.value })}
                                         className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400"
-                                        placeholder="Ej. Reunión de Equipo"
+                                        placeholder="Ej. Juan Pérez o Título Evento"
                                     />
                                 ) : (
-                                    <select
-                                        required
-                                        value={formData.patient}
-                                        onChange={(e) => setFormData({ ...formData, patient: e.target.value })}
-                                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400"
-                                    >
-                                        <option value="" disabled>Seleccionar Paciente...</option>
-                                        {patients.map(p => (
-                                            <option key={p.id} value={p.name}>{p.name}</option>
-                                        ))}
-                                        {formData.patient && !patients.some(p => p.name === formData.patient) && (
-                                            <option value={formData.patient}>{formData.patient} (Sin Registro)</option>
-                                        )}
-                                        {patients.length === 0 && !formData.patient && <option disabled>No hay pacientes registrados</option>}
-                                    </select>
+                                    <div className="relative">
+                                        <select
+                                            required
+                                            value={formData.patient}
+                                            onChange={(e) => setFormData({ ...formData, patient: e.target.value })}
+                                            className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 appearance-none"
+                                        >
+                                            <option value="" disabled>Seleccionar Paciente...</option>
+                                            {patients.map(p => (
+                                                <option key={p.id} value={p.name}>{p.name}</option>
+                                            ))}
+                                            {formData.patient && !patients.some(p => p.name === formData.patient) && (
+                                                <option value={formData.patient}>{formData.patient} (Sin Registro)</option>
+                                            )}
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-neutral-500">
+                                            <ChevronLeft className="-rotate-90" size={16} />
+                                        </div>
+                                    </div>
                                 )}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-neutral-400 mb-1">Día de la semana</label>
-                                    <select
-                                        value={formData.day}
-                                        onChange={(e) => setFormData({ ...formData, day: e.target.value })}
-                                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400"
-                                    >
-                                        {weekDates.map((date, index) => (
-                                            <option key={index} value={index}>{dayNames[date.getDay()]} {date.getDate()}</option>
-                                        ))}
-                                    </select>
+                                    <label className="block text-sm font-medium text-neutral-400 mb-1">Fecha</label>
+                                    <input
+                                        type="date"
+                                        value={formData.date}
+                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                        className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 [color-scheme:dark]"
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-neutral-400 mb-1">Hora</label>

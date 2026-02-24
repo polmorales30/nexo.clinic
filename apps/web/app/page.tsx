@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Users, Calendar as CalendarIcon, Activity, ArrowRight, Settings, UtensilsCrossed, TrendingUp, Clock, Plus } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { Users, Calendar as CalendarIcon, Activity, ArrowRight, Settings, UtensilsCrossed, Clock, Plus } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { supabase } from "../lib/supabase";
 
 export default function Home() {
   const [stats, setStats] = useState({ activePatients: 0, appointmentsToday: 0, dietsCount: 0, avgAge: 0 });
@@ -13,109 +14,90 @@ export default function Home() {
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
 
   useEffect(() => {
-    // Load Patients
-    const savedPatients = localStorage.getItem("nexo-patients");
-    let parsedPatients: any[] = [];
-    if (savedPatients) {
-      parsedPatients = JSON.parse(savedPatients);
-    }
-
-    const activeCount = parsedPatients.filter(p => p.status === "Activo").length;
-    const totalAge = parsedPatients.reduce((sum, p) => sum + (p.age || 0), 0);
-    const avgAge = parsedPatients.length > 0 ? Math.round(totalAge / parsedPatients.length) : 0;
-
-    // Load Appointments
-    const savedAppts = localStorage.getItem("nexo-appointments");
-    let parsedAppts: any[] = [];
-    if (savedAppts) {
-      parsedAppts = JSON.parse(savedAppts);
-    }
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = today.toISOString().split('T')[0] || '';
 
-    // Upcoming appointments
-    const futureAppts = parsedAppts
-      .filter(a => new Date(a.dateStr).getTime() >= today.getTime())
-      .sort((a, b) => {
-        const dateA = new Date(`${a.dateStr}T${a.time || "00:00"} `);
-        const dateB = new Date(`${b.dateStr}T${b.time || "00:00"} `);
-        return dateA.getTime() - dateB.getTime();
-      });
-
-    const todayCount = futureAppts.filter(a => a.dateStr === todayStr).length;
-
-    // Count Diets
-    let dietCount = 0;
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('nexo-diet-')) {
-        dietCount++;
+    // === STEP 1: Load patients (same pattern as pacientes/page.tsx which works) ===
+    supabase.from('patients').select('*').order('id', { ascending: false }).then(({ data }) => {
+      let patientList: any[] = [];
+      if (data && data.length > 0) {
+        patientList = data;
+      } else {
+        // Fallback to localStorage
+        const saved = localStorage.getItem('nexo-patients');
+        if (saved) { try { patientList = JSON.parse(saved); } catch { } }
       }
-    }
 
-    setStats({
-      activePatients: activeCount,
-      appointmentsToday: todayCount,
-      dietsCount: dietCount,
-      avgAge: avgAge
+      const activeCount = patientList.filter((p: any) => p.status === 'Activo').length;
+      const totalAge = patientList.reduce((sum: number, p: any) => sum + (Number(p.age) || 0), 0);
+      const avgAge = patientList.length > 0 ? Math.round(totalAge / patientList.length) : 0;
+
+      // === STEP 2: Load appointments ===
+      let allAppts: any[] = [];
+      const savedAppts = localStorage.getItem('nexo-appointments');
+      if (savedAppts) { try { allAppts = JSON.parse(savedAppts); } catch { } }
+
+      supabase.from('appointments').select('*').order('dateStr', { ascending: true }).then(({ data: appts }) => {
+        if (appts && appts.length > 0) allAppts = appts;
+
+        const futureAppts = allAppts.filter((a: any) => (a.dateStr || '') >= todayStr);
+        const todayCount = allAppts.filter((a: any) => a.dateStr === todayStr).length;
+
+        // === STEP 3: Load diets count ===
+        supabase.from('diets').select('*', { count: 'exact', head: true }).then(({ count: dietCount }) => {
+
+          // Update stats
+          setStats({
+            activePatients: activeCount > 0 ? activeCount : patientList.length,
+            appointmentsToday: todayCount,
+            dietsCount: dietCount || 0,
+            avgAge
+          });
+
+          setUpcomingAppts(futureAppts.slice(0, 4));
+
+          // Weekly chart
+          const weekly: any[] = [];
+          for (let i = 7; i >= 0; i--) {
+            const weekStart = new Date();
+            weekStart.setDate(weekStart.getDate() - i * 7 - weekStart.getDay() + 1);
+            weekStart.setHours(0, 0, 0, 0);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+            const count = allAppts.filter((a: any) => {
+              const d = new Date(a.dateStr);
+              return d >= weekStart && d <= weekEnd;
+            }).length;
+            weekly.push({ semana: `${weekStart.getDate()}/${weekStart.getMonth() + 1}`, citas: count });
+          }
+          setWeeklyData(weekly);
+
+          // Recent Activities
+          const activities: any[] = [];
+          if (patientList.length > 0) {
+            activities.push({ icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10', title: 'Pacientes registrados', desc: `${patientList.length} total · ${activeCount} activos`, time: 'Ahora' });
+          }
+          if (futureAppts.length > 0) {
+            const a1 = futureAppts[0];
+            activities.push({ icon: CalendarIcon, color: 'text-lime-400', bg: 'bg-lime-400/10', title: 'Próxima Cita', desc: `${a1.patient} · ${a1.dateStr}`, time: 'Próximamente' });
+          }
+          if ((dietCount || 0) > 0) {
+            activities.push({ icon: UtensilsCrossed, color: 'text-pink-500', bg: 'bg-pink-500/10', title: 'Planes activos', desc: `${dietCount} dietas guardadas`, time: 'Reciente' });
+          }
+          if (activities.length === 0) {
+            activities.push({ icon: Settings, color: 'text-neutral-400', bg: 'bg-neutral-800', title: 'Sistema listo', desc: 'Añade tu primer paciente para empezar', time: 'Sistema' });
+          }
+          setRecentActivities(activities);
+
+          const inactiveCount = patientList.filter((p: any) => p.status && p.status !== 'Activo').length;
+          const alerts: any[] = [];
+          if (inactiveCount > 0) alerts.push({ title: `${inactiveCount} paciente(s) inactivo(s)`, desc: 'Podrían requerir seguimiento.' });
+          setSystemAlerts(alerts);
+        });
+      });
     });
-
-    setUpcomingAppts(futureAppts.slice(0, 4));
-
-    // Build weekly appointments chart (last 8 weeks)
-    const weekly: any[] = [];
-    for (let i = 7; i >= 0; i--) {
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - i * 7 - weekStart.getDay() + 1);
-      weekStart.setHours(0, 0, 0, 0);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      weekEnd.setHours(23, 59, 59, 999);
-      const count = parsedAppts.filter(a => {
-        const d = new Date(a.dateStr);
-        return d >= weekStart && d <= weekEnd;
-      }).length;
-      const label = `${weekStart.getDate()}/${weekStart.getMonth() + 1}`;
-      weekly.push({ semana: label, citas: count });
-    }
-    setWeeklyData(weekly);
-
-    // Generate recent activities
-    const activities = [];
-
-    let pIndex = parsedPatients.length - 1;
-    if (pIndex >= 0) {
-      const p1 = parsedPatients[pIndex];
-      activities.push({ icon: Users, color: 'text-blue-500', bg: 'bg-blue-500/10', title: 'Paciente registrado', desc: `${p1.name} añadido al sistema`, time: 'Reciente' });
-    }
-    if (futureAppts.length > 0) {
-      const a1 = futureAppts[0];
-      activities.push({ icon: CalendarIcon, color: 'text-lime-400', bg: 'bg-lime-400/10', title: 'Próxima Cita Programada', desc: `Cita con ${a1.patient} el ${a1.dateStr} a las ${a1.time} `, time: 'Próximamente' });
-    }
-    if (dietCount > 0 && parsedPatients.length > 1) {
-      const p2 = parsedPatients[1];
-      activities.push({ icon: UtensilsCrossed, color: 'text-pink-500', bg: 'bg-pink-500/10', title: 'Dieta asignada', desc: `Plan nutricional configurado en el sistema`, time: 'Reciente' });
-    }
-
-    if (activities.length === 0) {
-      activities.push({ icon: Settings, color: 'text-neutral-400', bg: 'bg-neutral-800', title: 'Sistema Inicializado', desc: 'Configuración lista para empezar', time: 'Sistema' });
-    }
-
-    setRecentActivities(activities);
-
-    // Check if there's any alerts
-    const alerts = [];
-    const inactiveCount = parsedPatients.length - activeCount;
-    if (inactiveCount > 0) {
-      alerts.push({
-        title: `${inactiveCount} paciente(s) inactivo(s)`,
-        desc: `Hay pacientes marcados como inactivos en la base de datos que podrían requerir seguimiento.`
-      })
-    }
-    setSystemAlerts(alerts);
-
   }, []);
 
   return (
@@ -194,7 +176,6 @@ export default function Home() {
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Weekly appointments bar chart */}
           <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-6">
             <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-wider mb-6">Citas por Semana</h3>
             <div className="h-40">
@@ -214,7 +195,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Patient distribution donut alternative: status line */}
           <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-6">
             <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-wider mb-6">Resumen de Pacientes</h3>
             <div className="space-y-4">
@@ -271,9 +251,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Actions Column */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Quick Access Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Link href="/pacientes" className="group bg-neutral-900/40 border border-neutral-800 hover:border-lime-400/50 rounded-3xl p-6 transition-all relative overflow-hidden">
                 <div className="absolute right-0 bottom-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity transform translate-x-4 translate-y-4">
@@ -302,15 +280,12 @@ export default function Home() {
               </Link>
             </div>
 
-            {/* Recent Activity */}
             <div className="bg-neutral-900/30 border border-neutral-800 rounded-3xl p-6">
-              <h3 className="text-lg font-bold text-white mb-6 flex items-center justify-between">
-                Actividad Reciente
-              </h3>
+              <h3 className="text-lg font-bold text-white mb-6">Actividad Reciente</h3>
               <div className="space-y-4">
                 {recentActivities.map((item, i) => (
                   <div key={i} className="flex items-center gap-4 p-3 hover:bg-neutral-800/50 rounded-2xl transition-colors cursor-pointer group">
-                    <div className={`w - 12 h - 12 rounded - 2xl flex items - center justify - center shrink - 0 ${item.bg} `}>
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${item.bg}`}>
                       <item.icon size={20} className={item.color} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -326,7 +301,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right Column: Mini Calendar & Reminders */}
           <div className="space-y-6">
             <div className="bg-[#1c2c26] border border-[#2d473e] rounded-3xl p-6 text-white relative overflow-hidden">
               <div className="absolute right-0 top-0 w-40 h-40 bg-lime-400/10 blur-3xl rounded-full -mr-10 -mt-10"></div>
@@ -365,7 +339,6 @@ export default function Home() {
               </Link>
             </div>
 
-            {/* Alerts */}
             {systemAlerts.length > 0 && (
               <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6">
                 <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-wider mb-4">Avisos del Sistema</h3>
@@ -380,7 +353,6 @@ export default function Home() {
                 ))}
               </div>
             )}
-
           </div>
         </div>
 

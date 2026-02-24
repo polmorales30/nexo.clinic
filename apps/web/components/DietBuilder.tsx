@@ -103,12 +103,18 @@ export default function DietBuilder() {
 
     useEffect(() => {
         if (!selectedPatient) return;
-        supabase.from('diets').select('data').eq('patient_id', selectedPatient).single().then(({ data }) => {
-            if (data?.data) {
-                const d = data.data as any;
-                setWeeklyDiet(d.weeklyDiet ?? getInitialWeeklyDiet());
-                setUserGoals(d.userGoals ?? { kcal: 2000, p: 150, c: 200, f: 65 });
-                setCalcData(d.calcData ?? {
+        supabase.from('diets').select('data').eq('patient_id', selectedPatient).single().then(({ data, error }) => {
+            let loaded: any = null;
+            if (!error && data?.data) {
+                loaded = data.data as any;
+            } else {
+                const local = localStorage.getItem(`nexo-diet-${selectedPatient}`);
+                if (local) { try { loaded = JSON.parse(local); } catch { } }
+            }
+            if (loaded) {
+                setWeeklyDiet(loaded.weeklyDiet ?? getInitialWeeklyDiet());
+                setUserGoals(loaded.userGoals ?? { kcal: 2000, p: 150, c: 200, f: 65 });
+                setCalcData(loaded.calcData ?? {
                     age: 30, gender: 'Hombre', weight: 75, height: 175,
                     activity: 1.2, goal: 0,
                     protPercent: 30, fatPercent: 35
@@ -145,6 +151,7 @@ export default function DietBuilder() {
         const db = foodDatabase as FoodItem[];
         const findFood = (query: string): FoodItem => db.find(f => f.name.toLowerCase().includes(query)) || db[0]!;
 
+        // Essential food items for templates
         const oats = findFood('avena');
         const eggs = findFood('huevo');
         const milk = findFood('leche');
@@ -152,35 +159,60 @@ export default function DietBuilder() {
         const chicken = findFood('pollo');
         const rice = findFood('arroz');
         const olive = findFood('aceite de oliva');
-        const avocado = findFood('aguacate');
         const broccoli = findFood('brócoli');
         const salmon = findFood('salmón');
         const potato = findFood('patata');
         const yogurt = findFood('yogur');
         const walnuts = findFood('nuez');
+        const spinach = findFood('espinaca');
+        const tomato = findFood('tomate');
+        const pasta = findFood('pasta');
+        const beef = findFood('ternera');
 
         const genId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-        // --- MACRO-ACCURATE SCALING ---
-        // Each template is tuned for exactly 2000kcal / 150P / 200C / 65F.
-        // After choosing a template, we compute how far off the daily total is from
-        // the user goals, then apply a single proportional scaling factor so the
-        // SUMMED day lands within 1% of every macro target.
+        // --- MATH RULES ---
         const calcMacros = (items: FoodItem[]) => {
             let k = 0, p = 0, c = 0, f = 0;
-            items.forEach(i => { const r = (i.grams || 100) / 100; k += i.kcal * r; p += i.p * r; c += i.c * r; f += i.f * r; });
+            items.forEach(i => {
+                const r = (i.grams || 100) / 100;
+                k += i.kcal * r; p += i.p * r; c += i.c * r; f += i.f * r;
+            });
             return { k, p, c, f };
         };
 
-        // Scale all items in a meal so the meal's kcal = targetKcal
+        // Scale items to hit targetKcal, keeping all grams as multiples of 10g.
+        // Two-pass: (1) round each item, (2) correct drift on the largest-kcal item.
         const scaleToTarget = (items: FoodItem[], targetKcal: number): FoodItem[] => {
             const { k } = calcMacros(items);
-            if (k <= 0) return items;
+            if (k <= 0 || items.length === 0) return items;
             const factor = targetKcal / k;
-            return items.map(item => ({
-                ...item,
-                grams: Math.max(1, Math.round((item.grams || 100) * factor)),
-            }));
+
+            // Pass 1: round every item to nearest 10g
+            const scaled = items.map(item => {
+                const raw = (item.grams || 100) * factor;
+                const rounded = Math.max(10, Math.round(raw / 10) * 10);
+                return { ...item, grams: rounded };
+            });
+
+            // Pass 2: compute drift and correct by adjusting the item with the most kcal/g
+            const actualKcal = calcMacros(scaled).k;
+            const drift = targetKcal - actualKcal; // positive = need more, negative = need less
+            if (Math.abs(drift) > 5) {
+                // Find the item with the highest kcal density to absorb drift
+                let maxIdx = 0;
+                let maxKcalPer10g = 0;
+                scaled.forEach((item, i) => {
+                    const kcalPer10g = item.kcal * 0.1;
+                    if (kcalPer10g > maxKcalPer10g) { maxKcalPer10g = kcalPer10g; maxIdx = i; }
+                });
+                const targetItem = scaled[maxIdx]!;
+                const gramsToAdd = Math.round(drift / (targetItem.kcal / 100) / 10) * 10;
+                const newGrams = Math.max(10, (targetItem.grams || 10) + gramsToAdd);
+                scaled[maxIdx] = { ...targetItem, grams: newGrams };
+            }
+
+            return scaled;
         };
 
         setMeals((prev: Meals) => {
@@ -195,80 +227,75 @@ export default function DietBuilder() {
                 const mealName = meal.name.toLowerCase();
                 let itemsToAdd: FoodItem[] = [];
                 let suggestedDishName = '';
-                const randomVariant = Math.floor(Math.random() * 3);
+
+                // Decide between Option A (1st/2nd) and Option B (Harvard Plate) for main meals
+                const isMainMeal = mealName.includes('comida') || mealName.includes('almuerzo') || mealName.includes('cena');
+                const useHarvardPlate = Math.random() > 0.5;
 
                 if (mealName.includes('desayuno') || mealName.includes('mañana')) {
-                    if (randomVariant === 0) {
-                        suggestedDishName = 'Porridge de Avena y Plátano';
+                    // Breakfast usually doesn't follow plate method strictly but we ensure rounded grams
+                    const variant = Math.floor(Math.random() * 2);
+                    if (variant === 0) {
+                        suggestedDishName = 'Porridge Energético de Avena';
                         itemsToAdd = [
                             { ...oats, instanceId: genId('ai'), grams: 60 },
                             { ...milk, instanceId: genId('ai'), grams: 250 },
                             { ...banana, instanceId: genId('ai'), grams: 100 },
-                        ];
-                    } else if (randomVariant === 1) {
-                        suggestedDishName = 'Huevos revueltos con Avena';
-                        itemsToAdd = [
-                            { ...eggs, instanceId: genId('ai'), grams: 150 },
-                            { ...oats, instanceId: genId('ai'), grams: 50 },
-                            { ...olive, instanceId: genId('ai'), grams: 10 },
-                        ];
-                    } else {
-                        suggestedDishName = 'Yogur con Nueces y Plátano';
-                        itemsToAdd = [
-                            { ...yogurt, instanceId: genId('ai'), grams: 200 },
                             { ...walnuts, instanceId: genId('ai'), grams: 20 },
-                            { ...banana, instanceId: genId('ai'), grams: 120 },
-                        ];
-                    }
-                } else if (mealName.includes('comida') || mealName.includes('almuerzo')) {
-                    if (randomVariant === 0) {
-                        suggestedDishName = 'Pollo con Arroz y Brócoli';
-                        itemsToAdd = [
-                            { ...chicken, instanceId: genId('ai'), grams: 200 },
-                            { ...rice, instanceId: genId('ai'), grams: 100 },
-                            { ...broccoli, instanceId: genId('ai'), grams: 150 },
-                            { ...olive, instanceId: genId('ai'), grams: 15 },
-                        ];
-                    } else if (randomVariant === 1) {
-                        suggestedDishName = 'Salmón con Patatas';
-                        itemsToAdd = [
-                            { ...salmon, instanceId: genId('ai'), grams: 180 },
-                            { ...potato, instanceId: genId('ai'), grams: 300 },
-                            { ...olive, instanceId: genId('ai'), grams: 10 },
                         ];
                     } else {
-                        suggestedDishName = 'Pollo con Aguacate y Arroz';
-                        itemsToAdd = [
-                            { ...chicken, instanceId: genId('ai'), grams: 200 },
-                            { ...avocado, instanceId: genId('ai'), grams: 80 },
-                            { ...rice, instanceId: genId('ai'), grams: 80 },
-                        ];
-                    }
-                } else if (mealName.includes('cena')) {
-                    if (randomVariant === 0) {
-                        suggestedDishName = 'Salmón al horno con Patatas';
-                        itemsToAdd = [
-                            { ...salmon, instanceId: genId('ai'), grams: 150 },
-                            { ...potato, instanceId: genId('ai'), grams: 200 },
-                            { ...olive, instanceId: genId('ai'), grams: 10 },
-                        ];
-                    } else if (randomVariant === 1) {
-                        suggestedDishName = 'Tortilla de Brócoli';
+                        suggestedDishName = 'Huevos con Pan y Aguacate';
                         itemsToAdd = [
                             { ...eggs, instanceId: genId('ai'), grams: 150 },
-                            { ...broccoli, instanceId: genId('ai'), grams: 150 },
-                            { ...olive, instanceId: genId('ai'), grams: 15 },
+                            { ...findFood('pan'), instanceId: genId('ai'), grams: 60 },
+                            { ...findFood('aguacate'), instanceId: genId('ai'), grams: 50 },
+                            { ...tomato, instanceId: genId('ai'), grams: 100 }, // veggie abundance
                         ];
+                    }
+                } else if (isMainMeal) {
+                    if (useHarvardPlate) {
+                        // Option B: Harvard Plate (50% Veg, 25% Prot, 25% Carb)
+                        if (mealName.includes('cena')) {
+                            suggestedDishName = 'Plato Harvard: Salmón y Verduras';
+                            itemsToAdd = [
+                                { ...salmon, instanceId: genId('ai'), grams: 150 }, // Prot
+                                { ...potato, instanceId: genId('ai'), grams: 150 }, // Carb
+                                { ...broccoli, instanceId: genId('ai'), grams: 300 }, // 50% Veg
+                                { ...olive, instanceId: genId('ai'), grams: 10 },
+                            ];
+                        } else {
+                            suggestedDishName = 'Plato Harvard: Pollo con Arroz';
+                            itemsToAdd = [
+                                { ...chicken, instanceId: genId('ai'), grams: 200 }, // Prot
+                                { ...rice, instanceId: genId('ai'), grams: 100 },    // Carb
+                                { ...spinach, instanceId: genId('ai'), grams: 200 },  // Veg
+                                { ...tomato, instanceId: genId('ai'), grams: 150 },   // Veg (Total ~350g veg)
+                                { ...olive, instanceId: genId('ai'), grams: 10 },
+                            ];
+                        }
                     } else {
-                        suggestedDishName = 'Pollo ligero a la plancha';
-                        itemsToAdd = [
-                            { ...chicken, instanceId: genId('ai'), grams: 180 },
-                            { ...avocado, instanceId: genId('ai'), grams: 50 },
-                            { ...olive, instanceId: genId('ai'), grams: 10 },
-                        ];
+                        // Option A: 1st and 2nd Course
+                        if (mealName.includes('cena')) {
+                            suggestedDishName = '1º Ensalada Mixta / 2º Tortilla';
+                            itemsToAdd = [
+                                { ...tomato, instanceId: genId('ai'), grams: 200 }, // 1st course (veg)
+                                { ...findFood('lechuga'), instanceId: genId('ai'), grams: 100 },
+                                { ...eggs, instanceId: genId('ai'), grams: 150 }, // 2nd course
+                                { ...olive, instanceId: genId('ai'), grams: 10 },
+                            ];
+                        } else {
+                            suggestedDishName = '1º Pasta con Verduras / 2º Ternera';
+                            itemsToAdd = [
+                                { ...pasta, instanceId: genId('ai'), grams: 80 }, // Carb
+                                { ...broccoli, instanceId: genId('ai'), grams: 200 }, // Veg abundance in 1st
+                                { ...beef, instanceId: genId('ai'), grams: 150 },  // 2nd course
+                                { ...olive, instanceId: genId('ai'), grams: 10 },
+                            ];
+                        }
                     }
                 } else {
-                    suggestedDishName = 'Snack Rápido';
+                    // Snacks / Merienda
+                    suggestedDishName = 'Snack con Fruta y Frutos Secos';
                     itemsToAdd = [
                         { ...yogurt, instanceId: genId('ai'), grams: 200 },
                         { ...walnuts, instanceId: genId('ai'), grams: 30 },
@@ -276,8 +303,8 @@ export default function DietBuilder() {
                     ];
                 }
 
-                // Distribute calories equally across meals, then scale each meal to hit that kcal target.
-                // This guarantees the day total = userGoals.kcal ±1%.
+                // Balance macros: scale each meal so daily total hits userGoals.kcal
+                // Since we use the same scale factor for all meals (targets / current), macros stay in proportion.
                 const targetKcalForMeal = userGoals.kcal / mealCount;
                 itemsToAdd = scaleToTarget(itemsToAdd, targetKcalForMeal);
 
@@ -294,11 +321,20 @@ export default function DietBuilder() {
             return;
         }
         const payload = { weeklyDiet, userGoals, calcData };
-        await supabase.from('diets').upsert(
+
+        const { error } = await supabase.from('diets').upsert(
             { patient_id: Number(selectedPatient), data: payload, updated_at: new Date().toISOString() },
             { onConflict: 'patient_id' }
         );
-        alert('Dieta y objetivos guardados correctamente.');
+
+        if (error) {
+            console.error('Error saving diet to Supabase:', error);
+            // Fallback: save to localStorage
+            localStorage.setItem(`nexo-diet-${selectedPatient}`, JSON.stringify(payload));
+            alert('Dieta guardada localmente (Supabase no disponible).');
+        } else {
+            alert('Dieta y objetivos guardados correctamente.');
+        }
     };
 
     const updateGrams = (mealKey: string, index: number, grams: number) => {

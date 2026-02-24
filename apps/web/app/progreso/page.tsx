@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Plus, X, LineChart, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { supabase } from "../../lib/supabase";
 import {
     LineChart as RechartsLineChart,
     Line,
@@ -52,37 +53,89 @@ export default function ProgresoPage() {
 
     useEffect(() => {
         setNewProgress(prev => ({ ...prev, dateStr: new Date().toISOString().split('T')[0] || '' }));
-        const saved = localStorage.getItem('nexo-patients');
-        if (saved) {
-            setPatients(JSON.parse(saved));
+
+        async function loadPatients() {
+            const { data, error } = await supabase
+                .from('patients')
+                .select('id, name, age, goal, last_visit, next_visit, status')
+                .order('id', { ascending: false });
+
+            if (!error && data) {
+                // Map DB snake_case to frontend camelCase if necessary, or just use as is
+                const mapped = data.map((p: any) => ({
+                    ...p,
+                    lastVisit: p.last_visit,
+                    nextVisit: p.next_visit
+                }));
+                setPatients(mapped);
+            }
+            setIsLoaded(true);
         }
-        setIsLoaded(true);
+
+        loadPatients();
     }, []);
 
     useEffect(() => {
-        if (isLoaded) {
-            localStorage.setItem('nexo-patients', JSON.stringify(patients));
-        }
-    }, [patients, isLoaded]);
+        if (!selectedPatientId) return;
 
-    const handleAddProgress = () => {
+        async function loadProgress() {
+            const { data, error } = await supabase
+                .from('patient_check_ins')
+                .select('*')
+                .eq('patient_id', selectedPatientId)
+                .order('dateStr', { ascending: true });
+
+            if (!error && data) {
+                setPatients(prev => prev.map(p => {
+                    if (p.id === selectedPatientId) {
+                        return { ...p, progress: data };
+                    }
+                    return p;
+                }));
+            }
+        }
+
+        loadProgress();
+    }, [selectedPatientId]);
+
+    const handleAddProgress = async () => {
         if (!selectedPatientId) return;
         const hasData = newProgress.weight || newProgress.notes || newProgress.chest || newProgress.waist || newProgress.hip || newProgress.clavicle || newProgress.quadriceps || newProgress.biceps || newProgress.photoFrontal || newProgress.photoBack;
         if (!hasData) return;
 
-        const entry = { ...newProgress, id: Date.now() };
+        const entry = {
+            patient_id: selectedPatientId,
+            dateStr: newProgress.dateStr,
+            weight: newProgress.weight,
+            chest: newProgress.chest,
+            waist: newProgress.waist,
+            hip: newProgress.hip,
+            clavicle: newProgress.clavicle,
+            quadriceps: newProgress.quadriceps,
+            biceps: newProgress.biceps,
+            photoFrontal: newProgress.photoFrontal,
+            photoBack: newProgress.photoBack,
+            notes: newProgress.notes
+        };
 
-        setPatients(patients.map(p => {
-            if (p.id === selectedPatientId) {
-                const currentProgress = p.progress || [];
-                return { ...p, progress: [...currentProgress, entry] };
-            }
-            return p;
-        }));
+        const { data, error } = await supabase
+            .from('patient_check_ins')
+            .insert([entry])
+            .select();
 
-        setNewProgress({
-            id: 0, dateStr: new Date().toISOString().split('T')[0] || '', weight: '', chest: '', waist: '', hip: '', clavicle: '', quadriceps: '', biceps: '', photoFrontal: null, photoBack: null, notes: ''
-        });
+        if (!error && data) {
+            setPatients(patients.map(p => {
+                if (p.id === selectedPatientId) {
+                    const currentProgress = p.progress || [];
+                    return { ...p, progress: [...currentProgress, data[0]] };
+                }
+                return p;
+            }));
+
+            setNewProgress({
+                id: 0, dateStr: new Date().toISOString().split('T')[0] || '', weight: '', chest: '', waist: '', hip: '', clavicle: '', quadriceps: '', biceps: '', photoFrontal: null, photoBack: null, notes: ''
+            });
+        }
     };
 
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, side: 'frontal' | 'back') => {
@@ -99,14 +152,22 @@ export default function ProgresoPage() {
         }
     };
 
-    const handleDeleteProgress = (entryId: number) => {
+    const handleDeleteProgress = async (entryId: number) => {
         if (!selectedPatientId) return;
-        setPatients(patients.map(p => {
-            if (p.id === selectedPatientId) {
-                return { ...p, progress: (p.progress || []).filter(e => e.id !== entryId) };
-            }
-            return p;
-        }));
+
+        const { error } = await supabase
+            .from('patient_check_ins')
+            .delete()
+            .eq('id', entryId);
+
+        if (!error) {
+            setPatients(patients.map(p => {
+                if (p.id === selectedPatientId) {
+                    return { ...p, progress: (p.progress || []).filter(e => e.id !== entryId) };
+                }
+                return p;
+            }));
+        }
     };
 
     const selectedPatient = patients.find(p => p.id === selectedPatientId);
