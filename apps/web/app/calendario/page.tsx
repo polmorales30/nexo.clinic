@@ -401,7 +401,7 @@ export default function CalendarioPage() {
 
                     {/* Time Grid */}
                     <div className="flex-1 overflow-y-auto">
-                        <div className={`relative grid ${viewMode === 'day' ? 'grid-cols-2' : 'grid-cols-8'} h-[1440px]`}>
+                        <div className={`relative grid ${viewMode === 'day' ? 'grid-cols-2' : 'grid-cols-8'} h-[864px]`}>
                             {/* Hour lines (Background) — one per 80px slot */}
                             <div className="absolute inset-0 pointer-events-none">
                                 {timeSlots.map((time, i) => (
@@ -412,7 +412,7 @@ export default function CalendarioPage() {
                             {/* Time Labels Column - each slot is exactly 80px, label at the top where the hour line is */}
                             <div className="border-r border-neutral-800">
                                 {timeSlots.map(time => (
-                                    <div key={time} className="h-20 flex items-start justify-end pr-3 pt-1">
+                                    <div key={time} className="h-12 flex items-center justify-end pr-3">
                                         <span className="text-xs font-medium text-neutral-400">{time}</span>
                                     </div>
                                 ))}
