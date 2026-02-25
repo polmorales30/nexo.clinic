@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Users, Calendar as CalendarIcon, Activity, ArrowRight, Settings, UtensilsCrossed, Clock, Plus } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { supabase } from "../lib/supabase";
 
 export default function Home() {
@@ -12,6 +12,7 @@ export default function Home() {
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [systemAlerts, setSystemAlerts] = useState<any[]>([]);
   const [weeklyData, setWeeklyData] = useState<any[]>([]);
+  const [activeDonutIndex, setActiveDonutIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const today = new Date();
@@ -196,57 +197,81 @@ export default function Home() {
           </div>
 
           <div className="bg-neutral-900/50 border border-neutral-800 rounded-3xl p-6">
-            <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-wider mb-6">Resumen de Pacientes</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-lime-400" />
-                  <span className="text-sm text-neutral-300 font-medium">Activos</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 w-40 bg-neutral-800 h-2 rounded-full overflow-hidden">
-                    <div className="h-full bg-lime-400 rounded-full" style={{ width: stats.activePatients > 0 ? '100%' : '0%' }} />
+            <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-wider mb-2">Resumen de Pacientes</h3>
+            {(() => {
+              const donutData = [
+                { name: 'Activos', value: stats.activePatients || 0, color: '#a3e635' },
+                { name: 'Dietas', value: stats.dietsCount || 0, color: '#ec4899' },
+                { name: 'Citas hoy', value: stats.appointmentsToday || 0, color: '#60a5fa' },
+                { name: 'Edad media', value: stats.avgAge || 0, color: '#60D3A6' },
+              ];
+              const total = donutData.reduce((s, d) => s + d.value, 0);
+              const active = activeDonutIndex !== null ? donutData[activeDonutIndex] : null;
+              return (
+                <div className="flex items-center gap-4">
+                  <div className="relative w-40 h-40 shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={donutData}
+                          cx="50%" cy="50%"
+                          innerRadius={46} outerRadius={66}
+                          paddingAngle={3}
+                          dataKey="value"
+                          onMouseEnter={(_, index) => setActiveDonutIndex(index)}
+                          onMouseLeave={() => setActiveDonutIndex(null)}
+                          strokeWidth={0}
+                        >
+                          {donutData.map((entry, index) => (
+                            <Cell
+                              key={entry.name}
+                              fill={entry.color}
+                              opacity={activeDonutIndex === null || activeDonutIndex === index ? 1 : 0.3}
+                              style={{ cursor: 'pointer', transition: 'opacity 0.2s' }}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#171717', borderColor: '#262626', borderRadius: '12px', color: '#fff', fontSize: '12px' }}
+                          itemStyle={{ color: '#fff' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      {active ? (
+                        <>
+                          <span className="text-xl font-black leading-none" style={{ color: active.color }}>{active.value}</span>
+                          <span className="text-[10px] text-neutral-400 font-medium mt-0.5 text-center leading-tight max-w-[60px] truncate">{active.name}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xl font-black text-white leading-none">{total}</span>
+                          <span className="text-[10px] text-neutral-500 font-medium mt-0.5">Total</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-white font-bold text-sm w-6 text-right">{stats.activePatients}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-lime-400/40" />
-                  <span className="text-sm text-neutral-300 font-medium">Dietas asignadas</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 w-40 bg-neutral-800 h-2 rounded-full overflow-hidden">
-                    <div className="h-full bg-lime-400/60 rounded-full" style={{ width: stats.dietsCount > 0 ? `${Math.min(100, (stats.dietsCount / Math.max(stats.activePatients, 1)) * 100)}%` : '0%' }} />
+                  <div className="flex-1 space-y-3">
+                    {donutData.map((item, index) => (
+                      <div
+                        key={item.name}
+                        className="flex items-center justify-between cursor-pointer group"
+                        onMouseEnter={() => setActiveDonutIndex(index)}
+                        onMouseLeave={() => setActiveDonutIndex(null)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full shrink-0 transition-transform group-hover:scale-125" style={{ backgroundColor: item.color }} />
+                          <span className={`text-sm font-medium transition-colors ${activeDonutIndex === index ? 'text-white' : 'text-neutral-400'}`}>{item.name}</span>
+                        </div>
+                        <span className="text-sm font-bold" style={{ color: activeDonutIndex === index ? item.color : '#9ca3af' }}>
+                          {item.name === 'Edad media' ? `${item.value} a.` : item.value}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <span className="text-white font-bold text-sm w-6 text-right">{stats.dietsCount}</span>
                 </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-blue-400" />
-                  <span className="text-sm text-neutral-300 font-medium">Citas hoy</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 w-40 bg-neutral-800 h-2 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-400 rounded-full" style={{ width: stats.appointmentsToday > 0 ? `${Math.min(100, stats.appointmentsToday * 20)}%` : '0%' }} />
-                  </div>
-                  <span className="text-white font-bold text-sm w-6 text-right">{stats.appointmentsToday}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-[#60D3A6]" />
-                  <span className="text-sm text-neutral-300 font-medium">Edad media</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 w-40 bg-neutral-800 h-2 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#60D3A6] rounded-full" style={{ width: `${Math.min(100, (stats.avgAge / 70) * 100)}%` }} />
-                  </div>
-                  <span className="text-white font-bold text-sm w-8 text-right">{stats.avgAge} a.</span>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         </div>
 
