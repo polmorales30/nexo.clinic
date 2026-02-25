@@ -396,16 +396,21 @@ export default function DietBuilder() {
                 const finishMeal = { ...prev[destination.droppableId] } as Meal;
 
                 if (source.droppableId === destination.droppableId) {
-                    const [movedItem] = startMeal.items.splice(source.index, 1);
-                    if (movedItem) startMeal.items.splice(destination.index, 0, movedItem);
-                    return { ...prev, [source.droppableId]: startMeal };
+                    // Clone the items array before mutating it
+                    const newItems = [...startMeal.items];
+                    const [movedItem] = newItems.splice(source.index, 1);
+                    if (movedItem) newItems.splice(destination.index, 0, movedItem);
+                    return { ...prev, [source.droppableId]: { ...startMeal, items: newItems } };
                 } else {
-                    const [movedItem] = startMeal.items.splice(source.index, 1);
-                    if (movedItem) finishMeal.items.splice(destination.index, 0, movedItem);
+                    // Clone both arrays before mutating
+                    const startItems = [...startMeal.items];
+                    const finishItems = [...finishMeal.items];
+                    const [movedItem] = startItems.splice(source.index, 1);
+                    if (movedItem) finishItems.splice(destination.index, 0, movedItem);
                     return {
                         ...prev,
-                        [source.droppableId]: startMeal,
-                        [destination.droppableId]: finishMeal
+                        [source.droppableId]: { ...startMeal, items: startItems },
+                        [destination.droppableId]: { ...finishMeal, items: finishItems }
                     };
                 }
             });
