@@ -18,6 +18,7 @@ model Tenant {
   patients     Patient[]
   dietPlans    DietPlan[]
   appointments Appointment[]
+  recipes      Recipe[]
 }
 
 enum Role {
@@ -37,6 +38,7 @@ model User {
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   appointments Appointment[]
   dietPlans    DietPlan[]
+  conversations Conversation[]
 }
 
 model Patient {
@@ -54,6 +56,8 @@ model Patient {
   metrics      Metric[]
   dietPlans    DietPlan[]
   appointments Appointment[]
+  shoppingLists ShoppingList[]
+  conversations Conversation[]
 }
 
 model Anamnesis {
@@ -96,6 +100,7 @@ model DietPlan {
   patient      Patient @relation(fields: [patientId], references: [id])
   nutritionist User    @relation(fields: [nutritionistId], references: [id])
   meals        Meal[]
+  shoppingLists ShoppingList[]
 }
 
 model Appointment {
@@ -131,8 +136,80 @@ model MealItem {
   mealId        String
   foodSource    String // bedca_123, fatsecret_456
   quantityGrams Float
+  originalFoodSource String? // For food swapping tracking
+  isSwapped     Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   meal Meal @relation(fields: [mealId], references: [id])
+}
+
+// --- PHASE 1 MODELS ---
+
+model ShoppingList {
+  id          String   @id @default(uuid())
+  patientId   String
+  dietPlanId  String
+  weekNumber  Int      // e.g. 1
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient     Patient        @relation(fields: [patientId], references: [id])
+  dietPlan    DietPlan       @relation(fields: [dietPlanId], references: [id])
+  items       ShoppingItem[]
+}
+
+model ShoppingItem {
+  id             String       @id @default(uuid())
+  shoppingListId String
+  foodName       String
+  quantity       Float
+  unit           String       @default("g")
+  category       String?      // e.g. "Carnes", "Verduras"
+  isChecked      Boolean      @default(false)
+  
+  shoppingList   ShoppingList @relation(fields: [shoppingListId], references: [id], onDelete: Cascade)
+}
+
+model Conversation {
+  id             String    @id @default(uuid())
+  tenantId       String
+  patientId      String
+  nutritionistId String
+  lastMessageAt  DateTime  @default(now())
+
+  patient      Patient   @relation(fields: [patientId], references: [id])
+  nutritionist User      @relation(fields: [nutritionistId], references: [id])
+  messages     Message[]
+
+  @@unique([patientId, nutritionistId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  senderId       String       // ID of User or Patient
+  senderType     String       // "NUTRITIONIST" or "PATIENT"
+  content        String       
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+}
+
+model Recipe {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  ingredients Json
+  instructions Json?
+  prepTime    Int?
+  cookTime    Int?
+  servings    Int?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
 }

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { GripVertical, Plus, Trash2, Search, Wand2, Calculator, Save, User, X } from 'lucide-react';
+import { GripVertical, Plus, Trash2, Search, Wand2, Calculator, Save, User, X, Share2, Download } from 'lucide-react';
 import foodDatabase from '../data/foodDatabase.json';
 import { supabase } from '../lib/supabase';
 
@@ -16,6 +16,7 @@ type FoodItem = {
     instanceId?: string;
     grams?: number;
     dish?: string;
+    isSwappable?: boolean;
 };
 
 type Meal = {
@@ -47,53 +48,23 @@ const getInitialWeeklyDiet = (): WeeklyDiet => {
 export default function DietBuilder() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPatient, setSelectedPatient] = useState('');
-    const [patients, setPatients] = useState<{ id: number, name: string }[]>([]);
+    const [patients, setPatients] = useState<{ id: number, name: string, portal_username?: string, portal_password?: string }[]>([]);
 
     const [currentDay, setCurrentDay] = useState('Lunes');
     const [weeklyDiet, setWeeklyDiet] = useState<WeeklyDiet>(getInitialWeeklyDiet());
     const [userGoals, setUserGoals] = useState({ kcal: 2000, p: 150, c: 200, f: 65 });
 
-    // Calculator State
-    const [isCalcOpen, setIsCalcOpen] = useState(false);
-    const [calcData, setCalcData] = useState({
-        age: 30, gender: 'Hombre', weight: 75, height: 175,
-        activity: 1.2, goal: 0,
-        protPercent: 30, fatPercent: 35
-    });
 
-    const [tmb, setTmb] = useState(0);
-    const [tdee, setTdee] = useState(0);
-    const [dailyKcal, setDailyKcal] = useState(0);
-
-    // Calculate TMB, TDEE and Daily Kcal dynamically when calcData changes
-    useEffect(() => {
-        let currentTmb = 0;
-        if (calcData.gender === 'Hombre') {
-            currentTmb = (10 * calcData.weight) + (6.25 * calcData.height) - (5 * calcData.age) + 5;
-        } else {
-            currentTmb = (10 * calcData.weight) + (6.25 * calcData.height) - (5 * calcData.age) - 161;
-        }
-
-        const currentTdee = currentTmb * calcData.activity;
-        let finalKcal = currentTdee;
-
-        if (calcData.goal < 0) {
-            // Percent deduction (e.g. -20%)
-            finalKcal = currentTdee - (currentTdee * Math.abs(calcData.goal));
-        } else if (calcData.goal > 0) {
-            // Percent addition (e.g. +15%)
-            finalKcal = currentTdee + (currentTdee * calcData.goal);
-        }
-
-        setTmb(Math.round(currentTmb));
-        setTdee(Math.round(currentTdee));
-        setDailyKcal(Math.round(finalKcal));
-    }, [calcData]);
 
     useEffect(() => {
-        supabase.from('patients').select('id, name').order('id', { ascending: false }).then(({ data }) => {
+        supabase.from('patients').select('id, name, portal_username, portal_password').order('id', { ascending: false }).then(({ data }) => {
             if (data) {
-                setPatients(data.map((p: any) => ({ id: p.id, name: p.name })));
+                setPatients(data.map((p: any) => ({
+                    id: p.id,
+                    name: p.name,
+                    portal_username: p.portal_username,
+                    portal_password: p.portal_password
+                })));
                 if (data.length > 0 && !selectedPatient) {
                     setSelectedPatient(data[0]?.id.toString() ?? '');
                 }
@@ -114,19 +85,11 @@ export default function DietBuilder() {
             if (loaded) {
                 setWeeklyDiet(loaded.weeklyDiet ?? getInitialWeeklyDiet());
                 setUserGoals(loaded.userGoals ?? { kcal: 2000, p: 150, c: 200, f: 65 });
-                setCalcData(loaded.calcData ?? {
-                    age: 30, gender: 'Hombre', weight: 75, height: 175,
-                    activity: 1.2, goal: 0,
-                    protPercent: 30, fatPercent: 35
-                });
+
             } else {
                 setWeeklyDiet(getInitialWeeklyDiet());
                 setUserGoals({ kcal: 2000, p: 150, c: 200, f: 65 });
-                setCalcData({
-                    age: 30, gender: 'Hombre', weight: 75, height: 175,
-                    activity: 1.2, goal: 0,
-                    protPercent: 30, fatPercent: 35
-                });
+
             }
         });
     }, [selectedPatient]);
@@ -149,191 +112,401 @@ export default function DietBuilder() {
 
     const handleAutoIA = () => {
         const db = foodDatabase as FoodItem[];
-        const findFood = (query: string): FoodItem => db.find(f => f.name.toLowerCase().includes(query)) || db[0]!;
+        const normalizeStr = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-        // Essential food items for templates
-        const oats = findFood('avena');
-        const eggs = findFood('huevo');
-        const milk = findFood('leche');
-        const banana = findFood('plátano');
-        const chicken = findFood('pollo');
-        const rice = findFood('arroz');
-        const olive = findFood('aceite de oliva');
-        const broccoli = findFood('brócoli');
-        const salmon = findFood('salmón');
-        const potato = findFood('patata');
-        const yogurt = findFood('yogur');
-        const walnuts = findFood('nuez');
-        const spinach = findFood('espinaca');
-        const tomato = findFood('tomate');
-        const pasta = findFood('pasta');
-        const beef = findFood('ternera');
-
-        const genId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-        // --- MATH RULES ---
-        const calcMacros = (items: FoodItem[]) => {
-            let k = 0, p = 0, c = 0, f = 0;
-            items.forEach(i => {
-                const r = (i.grams || 100) / 100;
-                k += i.kcal * r; p += i.p * r; c += i.c * r; f += i.f * r;
-            });
-            return { k, p, c, f };
-        };
-
-        // Scale items to hit targetKcal, keeping all grams as multiples of 10g.
-        // Two-pass: (1) round each item, (2) correct drift on the largest-kcal item.
-        const scaleToTarget = (items: FoodItem[], targetKcal: number): FoodItem[] => {
-            const { k } = calcMacros(items);
-            if (k <= 0 || items.length === 0) return items;
-            const factor = targetKcal / k;
-
-            // Pass 1: round every item to nearest 10g
-            const scaled = items.map(item => {
-                const raw = (item.grams || 100) * factor;
-                const rounded = Math.max(10, Math.round(raw / 10) * 10);
-                return { ...item, grams: rounded };
-            });
-
-            // Pass 2: compute drift and correct by adjusting the item with the most kcal/g
-            const actualKcal = calcMacros(scaled).k;
-            const drift = targetKcal - actualKcal; // positive = need more, negative = need less
-            if (Math.abs(drift) > 5) {
-                // Find the item with the highest kcal density to absorb drift
-                let maxIdx = 0;
-                let maxKcalPer10g = 0;
-                scaled.forEach((item, i) => {
-                    const kcalPer10g = item.kcal * 0.1;
-                    if (kcalPer10g > maxKcalPer10g) { maxKcalPer10g = kcalPer10g; maxIdx = i; }
-                });
-                const targetItem = scaled[maxIdx]!;
-                const gramsToAdd = Math.round(drift / (targetItem.kcal / 100) / 10) * 10;
-                const newGrams = Math.max(10, (targetItem.grams || 10) + gramsToAdd);
-                scaled[maxIdx] = { ...targetItem, grams: newGrams };
+        const f = (q: string): FoodItem => {
+            const query = normalizeStr(q);
+            const found = db.find(x => normalizeStr(x.name).includes(query));
+            if (!found) {
+                console.warn(`[AutoIA] Could not find food matching "${q}"`);
+                // Safe fallback: Pollo if protein, otherwise Tomate (very low kcal)
+                const safeFallback = db.find(x => normalizeStr(x.name) === 'tomate') || db[db.length - 1]!;
+                return safeFallback;
             }
-
-            return scaled;
+            return found;
         };
+        const genId = () => `ai-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+        const round10 = (g: number) => Math.max(10, Math.round(g / 10) * 10);
+
+        // Scale an ingredient so it provides `targetGrams` of a given macro.
+        // Returns the new `grams` to set on the food item.
+        const gramsForMacro = (food: FoodItem, macroKey: 'p' | 'c' | 'f', targetGrams: number): number => {
+            const macroPer100g = food[macroKey];
+            if (!macroPer100g || macroPer100g <= 0) {
+                console.warn(`[AutoIA] Food ${food.name} has 0 for macro ${macroKey}. Cannot scale. Returning 10g.`);
+                return 10; // Prevent infinite grams
+            }
+            return round10((targetGrams / macroPer100g) * 100);
+        };
+
+        // Each dish template defines:
+        //  - name: dish display name
+        //  - protein / carb / fat: the MAIN source for each macro (used for scaling)
+        //  - veggies: fixed-portion vegetables/aromatics (not scaled)
+        //  - extras: other fixed items (sauces, garnishes)
+        type DishTemplate = {
+            name: string;
+            protein?: { food: FoodItem }; // scaled to targetP
+            carb?: { food: FoodItem };    // scaled to targetC
+            fat?: { food: FoodItem };     // scaled to targetF
+            veggies: { food: FoodItem; grams: number }[];
+            extras?: { food: FoodItem; grams: number }[];
+        };
+
+        // ─── Dish libraries by meal type ─────────────────────────────────────
+        const breakfastDishes: DishTemplate[] = [
+            {
+                name: 'Tortilla de Claras con Tostada',
+                protein: { food: f('clara') },
+                carb: { food: f('pan') },
+                fat: { food: f('aceite de oliva') },
+                veggies: [{ food: f('tomate'), grams: 100 }],
+            },
+            {
+                name: 'Porridge de Avena con Plátano',
+                protein: { food: f('leche') },
+                carb: { food: f('avena') },
+                fat: { food: f('nuez') },
+                veggies: [],
+                extras: [{ food: f('plátano'), grams: 80 }],
+            },
+            {
+                name: 'Huevos Revueltos con Aguacate y Pan',
+                protein: { food: f('huevo') },
+                carb: { food: f('pan') },
+                fat: { food: f('aguacate') },
+                veggies: [{ food: f('tomate'), grams: 100 }],
+            },
+            {
+                name: 'Yogur Griego con Frutos Secos y Avena',
+                protein: { food: f('yogur') },
+                carb: { food: f('avena') },
+                fat: { food: f('nuez') },
+                veggies: [],
+                extras: [{ food: f('plátano'), grams: 60 }],
+            },
+        ];
+
+        const lunchDishes: DishTemplate[] = [
+            {
+                name: 'Pollo a la Plancha con Arroz y Verduras',
+                protein: { food: f('pechuga de pollo') },
+                carb: { food: f('arroz') },
+                fat: { food: f('aceite de oliva') },
+                veggies: [{ food: f('brócoli'), grams: 150 }, { food: f('tomate'), grams: 80 }],
+            },
+            {
+                name: 'Pasta con Ternera y Tomate',
+                protein: { food: f('carne picada de ter') },
+                carb: { food: f('pasta') },
+                fat: { food: f('aceite de oliva') },
+                veggies: [{ food: f('tomate'), grams: 150 }, { food: f('espinaca'), grams: 80 }],
+            },
+            {
+                name: 'Salmón al Horno con Patata y Espinacas',
+                protein: { food: f('salmón') },
+                carb: { food: f('patata') },
+                fat: { food: f('aceite de oliva') },
+                veggies: [{ food: f('espinaca'), grams: 150 }, { food: f('tomate'), grams: 80 }],
+            },
+            {
+                name: 'Lentejas con Verduras',
+                protein: { food: f('lenteja') },
+                carb: { food: f('lenteja') }, // lentils cover both
+                fat: { food: f('aceite de oliva') },
+                veggies: [{ food: f('zanahoria'), grams: 80 }, { food: f('tomate'), grams: 80 }],
+            },
+            {
+                name: 'Merluza al Vapor con Arroz y Brócoli',
+                protein: { food: f('merluza') },
+                carb: { food: f('arroz') },
+                fat: { food: f('aceite de oliva') },
+                veggies: [{ food: f('brócoli'), grams: 200 }],
+            },
+        ];
+
+        const dinnerDishes: DishTemplate[] = [
+            {
+                name: 'Ensalada Mediterránea con Atún',
+                protein: { food: f('atún') },
+                carb: { food: f('garbanz') },
+                fat: { food: f('aceite de oliva') },
+                veggies: [{ food: f('lechuga'), grams: 100 }, { food: f('tomate'), grams: 100 }],
+            },
+            {
+                name: 'Revuelto de Claras con Verduras',
+                protein: { food: f('clara') },
+                carb: { food: f('pan') },
+                fat: { food: f('aceite de oliva') },
+                veggies: [{ food: f('espinaca'), grams: 150 }, { food: f('tomate'), grams: 80 }],
+            },
+            {
+                name: 'Salmón a la Plancha con Ensalada Verde',
+                protein: { food: f('salmón') },
+                carb: { food: f('patata') },
+                fat: { food: f('aceite de oliva') },
+                veggies: [{ food: f('lechuga'), grams: 100 }, { food: f('tomate'), grams: 100 }],
+            },
+            {
+                name: 'Pollo al Horno con Verduras Asadas',
+                protein: { food: f('pechuga de pollo') },
+                carb: { food: f('patata') },
+                fat: { food: f('aceite de oliva') },
+                veggies: [{ food: f('brócoli'), grams: 150 }, { food: f('zanahoria'), grams: 80 }],
+            },
+            {
+                name: 'Crema de Verduras con Huevo Duro',
+                protein: { food: f('huevo') },
+                carb: { food: f('patata') },
+                fat: { food: f('aceite de oliva') },
+                veggies: [{ food: f('brócoli'), grams: 200 }, { food: f('zanahoria'), grams: 100 }],
+            },
+        ];
+
+        const snackDishes: DishTemplate[] = [
+            {
+                name: 'Yogur con Nueces y Plátano',
+                protein: { food: f('yogur') },
+                carb: { food: f('plátano') },
+                fat: { food: f('nuez') },
+                veggies: [],
+            },
+            {
+                name: 'Tortita de Avena con Claras',
+                protein: { food: f('clara') },
+                carb: { food: f('avena') },
+                fat: { food: f('nuez') },
+                veggies: [],
+            },
+            {
+                name: 'Fruta con Queso Fresco',
+                protein: { food: f('queso') },
+                carb: { food: f('plátano') },
+                fat: { food: f('nuez') },
+                veggies: [],
+            },
+        ];
 
         setMeals((prev: Meals) => {
             const keys = Object.keys(prev);
             const mealCount = keys.length || 1;
             const newMeals: Meals = {};
 
-            keys.forEach((key, idx) => {
+            // Per-meal macro targets (split evenly across ALL meals)
+            const mealTargetKcal = userGoals.kcal / mealCount;
+            const mealTargetP = (userGoals.p || 0) / mealCount;
+            const mealTargetC = (userGoals.c || 0) / mealCount;
+            const mealTargetF = (userGoals.f || 0) / mealCount;
+
+            // Track which template indices have been used to avoid repeats
+            const usedIndices: Record<string, Set<number>> = {
+                breakfast: new Set(), lunch: new Set(), dinner: new Set(), snack: new Set()
+            };
+
+            keys.forEach((key) => {
                 const meal = prev[key];
                 if (!meal) return;
 
                 const mealName = meal.name.toLowerCase();
-                let itemsToAdd: FoodItem[] = [];
-                let suggestedDishName = '';
 
-                // Decide between Option A (1st/2nd) and Option B (Harvard Plate) for main meals
-                const isMainMeal = mealName.includes('comida') || mealName.includes('almuerzo') || mealName.includes('cena');
-                const useHarvardPlate = Math.random() > 0.5;
-
+                // Identify meal type
+                let pool: DishTemplate[];
+                let poolKey: string;
                 if (mealName.includes('desayuno') || mealName.includes('mañana')) {
-                    // Breakfast usually doesn't follow plate method strictly but we ensure rounded grams
-                    const variant = Math.floor(Math.random() * 2);
-                    if (variant === 0) {
-                        suggestedDishName = 'Porridge Energético de Avena';
-                        itemsToAdd = [
-                            { ...oats, instanceId: genId('ai'), grams: 60 },
-                            { ...milk, instanceId: genId('ai'), grams: 250 },
-                            { ...banana, instanceId: genId('ai'), grams: 100 },
-                            { ...walnuts, instanceId: genId('ai'), grams: 20 },
-                        ];
-                    } else {
-                        suggestedDishName = 'Huevos con Pan y Aguacate';
-                        itemsToAdd = [
-                            { ...eggs, instanceId: genId('ai'), grams: 150 },
-                            { ...findFood('pan'), instanceId: genId('ai'), grams: 60 },
-                            { ...findFood('aguacate'), instanceId: genId('ai'), grams: 50 },
-                            { ...tomato, instanceId: genId('ai'), grams: 100 }, // veggie abundance
-                        ];
-                    }
-                } else if (isMainMeal) {
-                    if (useHarvardPlate) {
-                        // Option B: Harvard Plate (50% Veg, 25% Prot, 25% Carb)
-                        if (mealName.includes('cena')) {
-                            suggestedDishName = 'Plato Harvard: Salmón y Verduras';
-                            itemsToAdd = [
-                                { ...salmon, instanceId: genId('ai'), grams: 150 }, // Prot
-                                { ...potato, instanceId: genId('ai'), grams: 150 }, // Carb
-                                { ...broccoli, instanceId: genId('ai'), grams: 300 }, // 50% Veg
-                                { ...olive, instanceId: genId('ai'), grams: 10 },
-                            ];
-                        } else {
-                            suggestedDishName = 'Plato Harvard: Pollo con Arroz';
-                            itemsToAdd = [
-                                { ...chicken, instanceId: genId('ai'), grams: 200 }, // Prot
-                                { ...rice, instanceId: genId('ai'), grams: 100 },    // Carb
-                                { ...spinach, instanceId: genId('ai'), grams: 200 },  // Veg
-                                { ...tomato, instanceId: genId('ai'), grams: 150 },   // Veg (Total ~350g veg)
-                                { ...olive, instanceId: genId('ai'), grams: 10 },
-                            ];
-                        }
-                    } else {
-                        // Option A: 1st and 2nd Course
-                        if (mealName.includes('cena')) {
-                            suggestedDishName = '1º Ensalada Mixta / 2º Tortilla';
-                            itemsToAdd = [
-                                { ...tomato, instanceId: genId('ai'), grams: 200 }, // 1st course (veg)
-                                { ...findFood('lechuga'), instanceId: genId('ai'), grams: 100 },
-                                { ...eggs, instanceId: genId('ai'), grams: 150 }, // 2nd course
-                                { ...olive, instanceId: genId('ai'), grams: 10 },
-                            ];
-                        } else {
-                            suggestedDishName = '1º Pasta con Verduras / 2º Ternera';
-                            itemsToAdd = [
-                                { ...pasta, instanceId: genId('ai'), grams: 80 }, // Carb
-                                { ...broccoli, instanceId: genId('ai'), grams: 200 }, // Veg abundance in 1st
-                                { ...beef, instanceId: genId('ai'), grams: 150 },  // 2nd course
-                                { ...olive, instanceId: genId('ai'), grams: 10 },
-                            ];
-                        }
-                    }
+                    pool = breakfastDishes; poolKey = 'breakfast';
+                } else if (mealName.includes('comida') || mealName.includes('almuerzo')) {
+                    pool = lunchDishes; poolKey = 'lunch';
+                } else if (mealName.includes('cena')) {
+                    pool = dinnerDishes; poolKey = 'dinner';
                 } else {
-                    // Snacks / Merienda
-                    suggestedDishName = 'Snack con Fruta y Frutos Secos';
-                    itemsToAdd = [
-                        { ...yogurt, instanceId: genId('ai'), grams: 200 },
-                        { ...walnuts, instanceId: genId('ai'), grams: 30 },
-                        { ...banana, instanceId: genId('ai'), grams: 100 },
-                    ];
+                    pool = snackDishes; poolKey = 'snack';
                 }
 
-                // Balance macros: scale each meal so daily total hits userGoals.kcal
-                // Since we use the same scale factor for all meals (targets / current), macros stay in proportion.
-                const targetKcalForMeal = userGoals.kcal / mealCount;
-                itemsToAdd = scaleToTarget(itemsToAdd, targetKcalForMeal);
+                // Pick a random dish template (avoid repeats as much as possible)
+                let idx = Math.floor(Math.random() * pool.length);
+                let tries = 0;
+                while (usedIndices[poolKey]!.has(idx) && tries < pool.length) {
+                    idx = (idx + 1) % pool.length;
+                    tries++;
+                }
+                usedIndices[poolKey]!.add(idx);
+                const dish = pool[idx]!;
 
-                newMeals[key] = { name: meal.name, subName: suggestedDishName, items: itemsToAdd };
+                // ── Step 1: build fixed-portion items (veggies + extras) ──────────
+                const fixedItems: FoodItem[] = [];
+                dish.veggies.forEach(v => fixedItems.push({ ...v.food, instanceId: genId(), grams: v.grams }));
+                dish.extras?.forEach(e => fixedItems.push({ ...e.food, instanceId: genId(), grams: e.grams }));
+                const fixedKcal = fixedItems.reduce((s, i) => s + i.kcal * (i.grams || 0) / 100, 0);
+
+                // ── Step 2: kcal budget remaining for macro sources ───────────────
+                const budgetKcal = Math.max(50, mealTargetKcal - fixedKcal);
+
+                // ── Step 3: normalize p/c/f targets so p*4 + c*4 + f*9 = budgetKcal
+                // This keeps the ratio between macros but ensures their combined kcal
+                // exactly fills the budget, so no clamp/blowup is needed afterwards.
+                const impliedMacroKcal = mealTargetP * 4 + mealTargetC * 4 + mealTargetF * 9;
+                const normFactor = impliedMacroKcal > 0 ? budgetKcal / impliedMacroKcal : 1;
+                const adjP = mealTargetP * normFactor;
+                const adjC = mealTargetC * normFactor;
+                const adjF = mealTargetF * normFactor;
+
+                // ── Step 4: scale protein / carb / fat sources ───────────────────
+                const macroItems: FoodItem[] = [];
+                if (dish.protein) {
+                    macroItems.push({ ...dish.protein.food, instanceId: genId(), grams: gramsForMacro(dish.protein.food, 'p', adjP) });
+                }
+                if (dish.carb && dish.carb.food !== dish.protein?.food) {
+                    macroItems.push({ ...dish.carb.food, instanceId: genId(), grams: gramsForMacro(dish.carb.food, 'c', adjC) });
+                }
+                if (dish.fat) {
+                    const g = Math.min(gramsForMacro(dish.fat.food, 'f', adjF), 60);
+                    macroItems.push({ ...dish.fat.food, instanceId: genId(), grams: g });
+                }
+
+                // ── Step 5: absorb rounding drift on protein source ──────────────
+                // round10() can leave ±(kcal of 10g) drift. Correct it on the anchor.
+                const macroKcal = macroItems.reduce((s, i) => s + i.kcal * (i.grams || 0) / 100, 0);
+                const drift = budgetKcal - macroKcal;
+                if (Math.abs(drift) > 1 && macroItems.length > 0) {
+                    const anchor = macroItems[0]!;
+                    const kcalPer10g = anchor.kcal / 10;
+                    if (kcalPer10g > 0) {
+                        const driftGrams = Math.round(drift / kcalPer10g) * 10;
+                        macroItems[0] = { ...anchor, grams: Math.max(10, (anchor.grams || 10) + driftGrams) };
+                    }
+                }
+
+                const finalItems = [...macroItems, ...fixedItems];
+                const finalP = finalItems.reduce((s, i) => s + i.p * (i.grams || 0) / 100, 0);
+                const finalC = finalItems.reduce((s, i) => s + i.c * (i.grams || 0) / 100, 0);
+                const finalF = finalItems.reduce((s, i) => s + i.f * (i.grams || 0) / 100, 0);
+                const finalKcal = finalItems.reduce((s, i) => s + i.kcal * (i.grams || 0) / 100, 0);
+
+                console.log(`[AutoIA Meal ${mealName}] Targets: Kcal=${mealTargetKcal.toFixed(0)}, P=${mealTargetP.toFixed(0)}, C=${mealTargetC.toFixed(0)}, F=${mealTargetF.toFixed(0)}`);
+                console.log(`[AutoIA Meal ${mealName}] Actual: Kcal=${finalKcal.toFixed(0)}, P=${finalP.toFixed(0)}, C=${finalC.toFixed(0)}, F=${finalF.toFixed(0)}`);
+                console.log(`[AutoIA Meal ${mealName}] Items:`, finalItems.map(i => `${i.grams}g ${i.name}`));
+
+                newMeals[key] = { name: meal.name, subName: dish.name, items: finalItems };
             });
 
             return newMeals;
         });
     };
 
+
+
+
     const handleAssignDiet = async () => {
         if (!selectedPatient) {
             alert('Selecciona un paciente en el menú superior para guardar su dieta.');
             return;
         }
-        const payload = { weeklyDiet, userGoals, calcData };
 
-        const { error } = await supabase.from('diets').upsert(
-            { patient_id: Number(selectedPatient), data: payload, updated_at: new Date().toISOString() },
-            { onConflict: 'patient_id' }
-        );
+        // Fetch existing data to preserve chatHistory and other fields
+        const { data: existing } = await supabase.from('diets').select('data').eq('patient_id', Number(selectedPatient)).maybeSingle();
+        const existingData = existing?.data || {};
+        const payload = { ...existingData, weeklyDiet, userGoals };
 
-        if (error) {
-            console.error('Error saving diet to Supabase:', error);
-            // Fallback: save to localStorage
-            localStorage.setItem(`nexo-diet-${selectedPatient}`, JSON.stringify(payload));
-            alert('Dieta guardada localmente (Supabase no disponible).');
+        if (existing) {
+            const { error } = await supabase.from('diets')
+                .update({ data: payload })
+                .eq('patient_id', Number(selectedPatient));
+            if (error) {
+                console.error('Error saving diet to Supabase:', error);
+                localStorage.setItem(`nexo-diet-${selectedPatient}`, JSON.stringify(payload));
+                alert('Dieta guardada localmente (Supabase no disponible).');
+            } else {
+                alert('Dieta y objetivos guardados correctamente.');
+            }
         } else {
-            alert('Dieta y objetivos guardados correctamente.');
+            const { error } = await supabase.from('diets')
+                .insert({ patient_id: Number(selectedPatient), data: payload });
+            if (error) {
+                console.error('Error saving diet to Supabase:', error);
+                localStorage.setItem(`nexo-diet-${selectedPatient}`, JSON.stringify(payload));
+                alert('Dieta guardada localmente (Supabase no disponible).');
+            } else {
+                alert('Dieta y objetivos guardados correctamente.');
+            }
+        }
+    };
+
+    const handleShareAccess = async () => {
+        const patient = patients.find(p => p.id.toString() === selectedPatient);
+        if (!patient) {
+            alert('Selecciona un paciente primero.');
+            return;
+        }
+
+        const portalUrl = `${window.location.origin}/portal`;
+        const textToShare = `Hola ${patient.name.split(' ')[0]},\n\nYa tienes disponible tu nueva dieta en tu portal personal.\n\nAccede aquí: ${portalUrl}\nUsuario: ${patient.portal_username}\nContraseña: ${patient.portal_password}\n\n¡A por todas!`;
+
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Tu Dieta Semanal - NEXO.Clinic',
+                    text: textToShare,
+                });
+            } catch (err) {
+                console.error('Error al compartir', err);
+                navigator.clipboard.writeText(textToShare);
+                alert('Credenciales copiadas al portapapeles. Ahora puedes pegarlas donde quieras.');
+            }
+        } else {
+            console.log('Web Share API no soportada en este navegador, copiando al portapapeles...');
+            navigator.clipboard.writeText(textToShare);
+            alert('Credenciales copiadas al portapapeles. Ahora puedes pegarlas donde quieras.');
+        }
+    };
+
+    const handleExportPDF = async () => {
+        const patient = patients.find(p => p.id.toString() === selectedPatient);
+        if (!patient) {
+            alert('Selecciona un paciente primero.');
+            return;
+        }
+
+        try {
+            const html2pdf = (await import('html2pdf.js')).default;
+            const { jsPDF } = await import('jspdf');
+            const html2canvas = (await import('html2canvas')).default;
+
+            const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+            const pageW = pdf.internal.pageSize.getWidth();  // 297mm
+            const pageH = pdf.internal.pageSize.getHeight(); // 210mm
+
+            for (let i = 0; i < daysOfWeek.length; i++) {
+                const day = daysOfWeek[i];
+                const el = document.getElementById(`print-day-${day}`);
+                if (!el) continue;
+
+                const canvas = await html2canvas(el, {
+                    scale: 2,
+                    useCORS: true,
+                    backgroundColor: '#ffffff',
+                    width: el.offsetWidth,
+                    windowWidth: el.offsetWidth,
+                });
+
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                const ratio = canvas.height / canvas.width;
+                const imgW = pageW;
+                const imgH = imgW * ratio;
+
+                if (i > 0) pdf.addPage();
+
+                // Fill the whole page black so any empty space below the image is dark
+                pdf.setFillColor(10, 10, 10);
+                pdf.rect(0, 0, pageW, pageH, 'F');
+
+                pdf.addImage(imgData, 'JPEG', 0, 0, imgW, imgH > pageH ? pageH : imgH);
+            }
+
+            pdf.save(`Dieta_${patient.name.replace(/\s+/g, '_')}_Completa.pdf`);
+
+        } catch (error) {
+            console.error('Error generando PDF:', error);
+            alert('Hubo un error al generar el PDF.');
         }
     };
 
@@ -355,12 +528,16 @@ export default function DietBuilder() {
         });
     };
 
-    const openCalc = () => {
-        if (!selectedPatient) {
-            alert('Por favor, selecciona un paciente en el menú superior antes de usar la calculadora.');
-            return;
-        }
-        setIsCalcOpen(true);
+    const toggleSwappable = (mealKey: string, index: number) => {
+        setMeals((prev: Meals) => {
+            const targetMeal = { ...prev[mealKey] } as Meal;
+            targetMeal.items = [...targetMeal.items];
+            const currentItem = targetMeal.items[index];
+            if (currentItem) {
+                targetMeal.items[index] = { ...currentItem, isSwappable: !currentItem.isSwappable } as FoodItem;
+            }
+            return { ...prev, [mealKey]: targetMeal };
+        });
     };
 
     // Filter foods by search term
@@ -448,23 +625,23 @@ export default function DietBuilder() {
 
     return (
         <DragDropContext onDragEnd={handleDragEnd}>
-            <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-neutral-950 text-white font-sans">
+            <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-white text-slate-900 font-sans">
 
                 {/* Left Sidebar: Food Bank */}
-                <div className="w-80 border-r border-neutral-800 flex flex-col bg-neutral-900/50">
-                    <div className="p-4 border-b border-neutral-800">
+                <div className="w-80 border-r border-slate-200 flex flex-col bg-white">
+                    <div className="p-4 border-b border-slate-200">
                         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                            <Calculator size={20} className="text-lime-400" />
+                            <Calculator size={20} className="text-red-600" />
                             Alimentos
                         </h2>
                         <div className="relative">
-                            <Search size={16} className="absolute left-3 top-3 text-neutral-500" />
+                            <Search size={16} className="absolute left-3 top-3 text-slate-500" />
                             <input
                                 type="text"
                                 placeholder="Buscar alimento..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-neutral-900 border border-neutral-800 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-lime-400 transition-colors"
+                                className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-red-400 transition-colors"
                             />
                         </div>
                     </div>
@@ -483,15 +660,15 @@ export default function DietBuilder() {
                                                 ref={provided.innerRef}
                                                 {...provided.draggableProps}
                                                 {...provided.dragHandleProps}
-                                                className="bg-neutral-800 border border-neutral-700 p-3 rounded-xl flex items-center justify-between shadow-sm hover:border-lime-500/50 transition-colors group"
+                                                className="bg-slate-50 border border-slate-300 p-3 rounded-xl flex items-center justify-between shadow-sm hover:border-red-500/50 transition-colors group"
                                             >
                                                 <div>
                                                     <p className="font-semibold text-sm">{food.name}</p>
-                                                    <p className="text-xs text-neutral-400 mt-1">
+                                                    <p className="text-xs text-slate-600 mt-1">
                                                         {food.kcal}kcal • {food.p}P {food.c}C {food.f}F
                                                     </p>
                                                 </div>
-                                                <GripVertical size={16} className="text-neutral-500 group-hover:text-lime-400" />
+                                                <GripVertical size={16} className="text-slate-500 group-hover:text-red-600" />
                                             </div>
                                         )}
                                     </Draggable>
@@ -503,24 +680,24 @@ export default function DietBuilder() {
                 </div>
 
                 {/* Right Area: Diet Canvas */}
-                <div className="flex-1 flex flex-col bg-neutral-950 overflow-y-auto">
+                <div className="flex-1 flex flex-col bg-white overflow-y-auto">
 
                     {/* Top Header */}
-                    <div className="flex justify-between items-center p-6 border-b border-neutral-800 sticky top-0 bg-neutral-950/80 backdrop-blur z-10">
+                    <div className="flex justify-between items-center p-6 border-b border-slate-200 sticky top-0 bg-white/80 backdrop-blur z-10">
                         <div>
                             <div className="flex items-center gap-2">
-                                <User size={20} className="text-lime-400" />
+                                <User size={20} className="text-red-600" />
                                 <select
                                     value={selectedPatient}
                                     onChange={(e) => setSelectedPatient(e.target.value)}
-                                    className="bg-transparent text-xl font-bold text-white focus:outline-none focus:border-b focus:border-lime-400 cursor-pointer appearance-none pr-4"
+                                    className="bg-transparent text-xl font-bold text-slate-900 focus:outline-none focus:border-b focus:border-red-400 cursor-pointer appearance-none pr-4"
                                 >
-                                    <option value="" disabled className="bg-neutral-900 text-neutral-500">Seleccionar Paciente...</option>
+                                    <option value="" disabled className="bg-white text-slate-500">Seleccionar Paciente...</option>
                                     {patients.map(p => (
-                                        <option key={p.id} value={p.id.toString()} className="bg-neutral-900">{p.name}</option>
+                                        <option key={p.id} value={p.id.toString()} className="bg-white">{p.name}</option>
                                     ))}
                                     {patients.length === 0 && (
-                                        <option value="" disabled className="bg-neutral-900">No hay pacientes registrados</option>
+                                        <option value="" disabled className="bg-white">No hay pacientes registrados</option>
                                     )}
                                 </select>
                             </div>
@@ -531,7 +708,7 @@ export default function DietBuilder() {
                                     <button
                                         key={day}
                                         onClick={() => setCurrentDay(day)}
-                                        className={`px-4 py-1.5 text-xs rounded-full font-bold transition-all ${currentDay === day ? 'bg-lime-400 text-black shadow-[0_0_10px_rgba(163,230,53,0.3)]' : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'}`}
+                                        className={`px-4 py-1.5 text-xs rounded-full font-bold transition-all ${currentDay === day ? 'bg-red-600 text-black shadow-sm' : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'}`}
                                     >
                                         {day.toUpperCase()}
                                     </button>
@@ -541,49 +718,76 @@ export default function DietBuilder() {
 
                         <div className="flex items-center gap-6">
                             <div className="flex gap-6">
-                                <div className="text-center w-20">
-                                    <div className="text-lg font-bold text-red-400 mb-1 whitespace-nowrap"><span className={totalKcal > userGoals.kcal ? 'text-red-500' : ''}>{totalKcal.toFixed(0)}</span> <span className="text-xs text-neutral-500 font-normal">/ {userGoals.kcal}</span></div>
-                                    <div className="w-full bg-neutral-800 h-1.5 rounded-full mb-1 overflow-hidden"><div className={`h-full ${totalKcal > userGoals.kcal ? 'bg-red-500' : 'bg-red-400'}`} style={{ width: `${Math.min(100, (totalKcal / userGoals.kcal) * 100)}%` }}></div></div>
-                                    <div className="text-[10px] font-bold text-neutral-500">KCAL</div>
-                                </div>
-                                <div className="text-center w-20">
-                                    <div className="text-lg font-bold text-pink-500 mb-1 whitespace-nowrap"><span className={totalP > userGoals.p ? 'text-pink-600' : ''}>{totalP.toFixed(0)}</span> <span className="text-xs text-neutral-500 font-normal">/ {userGoals.p}</span></div>
-                                    <div className="w-full bg-neutral-800 h-1.5 rounded-full mb-1 overflow-hidden"><div className={`h-full ${totalP > userGoals.p ? 'bg-pink-600' : 'bg-pink-500'}`} style={{ width: `${Math.min(100, (totalP / userGoals.p) * 100)}%` }}></div></div>
-                                    <div className="text-[10px] font-bold text-neutral-500">PRO (g)</div>
-                                </div>
-                                <div className="text-center w-20">
-                                    <div className="text-lg font-bold text-lime-400 mb-1 whitespace-nowrap"><span className={totalC > userGoals.c ? 'text-lime-500' : ''}>{totalC.toFixed(0)}</span> <span className="text-xs text-neutral-500 font-normal">/ {userGoals.c}</span></div>
-                                    <div className="w-full bg-neutral-800 h-1.5 rounded-full mb-1 overflow-hidden"><div className={`h-full ${totalC > userGoals.c ? 'bg-lime-500' : 'bg-lime-400'}`} style={{ width: `${Math.min(100, (totalC / userGoals.c) * 100)}%` }}></div></div>
-                                    <div className="text-[10px] font-bold text-neutral-500">CARB (g)</div>
-                                </div>
-                                <div className="text-center w-20">
-                                    <div className="text-lg font-bold text-red-400 mb-1 whitespace-nowrap"><span className={totalF > userGoals.f ? 'text-red-500' : ''}>{totalF.toFixed(0)}</span> <span className="text-xs text-neutral-500 font-normal">/ {userGoals.f}</span></div>
-                                    <div className="w-full bg-neutral-800 h-1.5 rounded-full mb-1 overflow-hidden"><div className={`h-full ${totalF > userGoals.f ? 'bg-red-500' : 'bg-red-400'}`} style={{ width: `${Math.min(100, (totalF / userGoals.f) * 100)}%` }}></div></div>
-                                    <div className="text-[10px] font-bold text-neutral-500">GRA (g)</div>
-                                </div>
+                                {(() => {
+                                    const getColors = (cur: number, tgt: number) => {
+                                        if (!tgt) return { text: 'text-slate-500', bg: 'bg-emerald-500' };
+                                        const r = cur / tgt;
+                                        if (r <= 1.0) return { text: 'text-emerald-600', bg: 'bg-emerald-500' };
+                                        if (r <= 1.1) return { text: 'text-amber-500', bg: 'bg-amber-500' };
+                                        return { text: 'text-red-600', bg: 'bg-red-600' };
+                                    };
+
+                                    const cKcal = getColors(totalKcal, userGoals.kcal);
+                                    const cP = getColors(totalP, userGoals.p);
+                                    const cC = getColors(totalC, userGoals.c);
+                                    const cF = getColors(totalF, userGoals.f);
+
+                                    return (
+                                        <>
+                                            <div className="text-center w-20">
+                                                <div className={`text-lg font-bold mb-1 whitespace-nowrap ${cKcal.text}`}><span>{totalKcal.toFixed(0)}</span> <span className="text-xs text-slate-500 font-normal">/ {userGoals.kcal}</span></div>
+                                                <div className="w-full bg-slate-100 h-1.5 rounded-full mb-1 overflow-hidden"><div className={`h-full ${cKcal.bg} transition-all`} style={{ width: `${Math.min(100, (totalKcal / (userGoals.kcal || 1)) * 100)}%` }}></div></div>
+                                                <div className="text-[10px] font-bold text-slate-500">KCAL</div>
+                                            </div>
+                                            <div className="text-center w-20">
+                                                <div className={`text-lg font-bold mb-1 whitespace-nowrap ${cP.text}`}><span>{totalP.toFixed(0)}</span> <span className="text-xs text-slate-500 font-normal">/ {userGoals.p}</span></div>
+                                                <div className="w-full bg-slate-100 h-1.5 rounded-full mb-1 overflow-hidden"><div className={`h-full ${cP.bg} transition-all`} style={{ width: `${Math.min(100, (totalP / (userGoals.p || 1)) * 100)}%` }}></div></div>
+                                                <div className="text-[10px] font-bold text-slate-500">PRO (g)</div>
+                                            </div>
+                                            <div className="text-center w-20">
+                                                <div className={`text-lg font-bold mb-1 whitespace-nowrap ${cC.text}`}><span>{totalC.toFixed(0)}</span> <span className="text-xs text-slate-500 font-normal">/ {userGoals.c}</span></div>
+                                                <div className="w-full bg-slate-100 h-1.5 rounded-full mb-1 overflow-hidden"><div className={`h-full ${cC.bg} transition-all`} style={{ width: `${Math.min(100, (totalC / (userGoals.c || 1)) * 100)}%` }}></div></div>
+                                                <div className="text-[10px] font-bold text-slate-500">CARB (g)</div>
+                                            </div>
+                                            <div className="text-center w-20">
+                                                <div className={`text-lg font-bold mb-1 whitespace-nowrap ${cF.text}`}><span>{totalF.toFixed(0)}</span> <span className="text-xs text-slate-500 font-normal">/ {userGoals.f}</span></div>
+                                                <div className="w-full bg-slate-100 h-1.5 rounded-full mb-1 overflow-hidden"><div className={`h-full ${cF.bg} transition-all`} style={{ width: `${Math.min(100, (totalF / (userGoals.f || 1)) * 100)}%` }}></div></div>
+                                                <div className="text-[10px] font-bold text-slate-500">GRA (g)</div>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </div>
 
-                            <button onClick={addMeal} className="bg-neutral-800 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-neutral-700 transition-colors border border-neutral-700">
+                            <button onClick={addMeal} className="bg-slate-50 text-slate-900 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-slate-100 transition-colors border border-slate-300">
                                 <Plus size={16} />
                                 Añadir Comida
                             </button>
-                            <button onClick={openCalc} className="bg-neutral-800 text-pink-500 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-neutral-700 transition-colors border border-neutral-700">
-                                <Calculator size={16} />
-                                Calc.
-                            </button>
-                            <button onClick={handleAutoIA} className="bg-neutral-800 text-lime-400 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-neutral-700 transition-colors border border-neutral-700">
+
+                            <button onClick={handleAutoIA} className="bg-slate-50 text-red-600 px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-slate-100 transition-colors border border-slate-300">
                                 <Wand2 size={16} />
                                 Auto IA
                             </button>
-                            <button onClick={handleAssignDiet} className="bg-lime-400 text-black px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-lime-500 transition-colors ml-4 shadow-[0_0_15px_rgba(163,230,53,0.3)]">
+
+                            {/* Nuevos botones: Compartir y PDF */}
+                            <div className="flex gap-2 ml-4">
+                                <button onClick={handleShareAccess} title="Compartir acceso al portal" className="bg-slate-50 text-slate-900 p-2 rounded-lg hover:bg-slate-100 transition-colors border border-slate-300">
+                                    <Share2 size={18} />
+                                </button>
+                                <button onClick={handleExportPDF} title="Exportar dieta a PDF" className="bg-slate-50 text-slate-900 p-2 rounded-lg hover:bg-slate-100 transition-colors border border-slate-300">
+                                    <Download size={18} />
+                                </button>
+                            </div>
+
+                            <button onClick={handleAssignDiet} className="bg-red-600 text-black px-6 py-2 rounded-lg font-bold flex items-center gap-2 hover:bg-red-600 transition-colors shadow-sm">
                                 <Save size={16} />
-                                Guardar Dieta
+                                Guardar
                             </button>
                         </div>
                     </div>
 
-                    {/* Meals Board */}
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Meals Board (Printable Area) */}
+                    <div id="diet-print-area" className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                         {Object.keys(meals).map((mealKey) => {
                             const meal = meals[mealKey]!;
                             let mKcal = 0, mP = 0, mC = 0, mF = 0;
@@ -593,9 +797,9 @@ export default function DietBuilder() {
                             });
 
                             return (
-                                <div key={mealKey} className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 flex flex-col">
+                                <div key={mealKey} className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col">
                                     {/* Meal Header */}
-                                    <div className="flex justify-between items-start border-b border-neutral-800 pb-3 mb-4">
+                                    <div className="flex justify-between items-start border-b border-slate-200 pb-3 mb-4">
                                         <div className="w-1/2 pr-2">
                                             <input
                                                 type="text"
@@ -606,7 +810,7 @@ export default function DietBuilder() {
                                                         return { ...prev, [mealKey]: target };
                                                     });
                                                 }}
-                                                className="bg-transparent text-lg font-bold text-lime-400 focus:outline-none focus:border-b focus:border-lime-400 w-full"
+                                                className="bg-transparent text-lg font-bold text-red-600 focus:outline-none focus:border-b focus:border-red-400 w-full"
                                             />
                                             <input
                                                 type="text"
@@ -618,18 +822,18 @@ export default function DietBuilder() {
                                                     });
                                                 }}
                                                 placeholder="Ej. Pollo con Arroz..."
-                                                className="bg-transparent text-sm text-neutral-400 mt-1 italic focus:outline-none focus:border-b focus:border-neutral-500 w-full placeholder:text-neutral-600"
+                                                className="bg-transparent text-sm text-slate-600 mt-1 italic focus:outline-none focus:border-b focus:border-neutral-500 w-full placeholder:text-slate-500"
                                             />
                                         </div>
                                         <div className="flex flex-col items-end gap-1 shrink-0 mt-1">
                                             <button
                                                 onClick={() => removeMeal(mealKey)}
-                                                className="text-neutral-500 hover:text-red-400 transition-colors p-1"
+                                                className="text-slate-500 hover:text-red-600 transition-colors p-1"
                                                 title="Eliminar comida"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
-                                            <div className="text-xs text-neutral-400 text-right">
+                                            <div className="text-xs text-slate-600 text-right">
                                                 {mKcal.toFixed(0)}kcal{'\n'}
                                                 {mP.toFixed(0)}p {mC.toFixed(0)}c {mF.toFixed(0)}g
                                             </div>
@@ -640,7 +844,7 @@ export default function DietBuilder() {
                                     <Droppable droppableId={mealKey}>
                                         {(provided, snapshot) => (
                                             <div
-                                                className={`flex-1 min-h-[200px] rounded-xl p-2 transition-colors ${snapshot.isDraggingOver ? 'bg-lime-900/10 border-2 border-dashed border-lime-500/50' : 'bg-neutral-950 border border-neutral-900'
+                                                className={`flex-1 min-h-[200px] rounded-xl p-2 transition-colors ${snapshot.isDraggingOver ? 'bg-red-900/10 border-2 border-dashed border-red-500/50' : 'bg-white border border-neutral-900'
                                                     }`}
                                                 ref={provided.innerRef}
                                                 {...provided.droppableProps}
@@ -654,16 +858,16 @@ export default function DietBuilder() {
                                                                     ref={provided.innerRef}
                                                                     {...provided.draggableProps}
                                                                     {...provided.dragHandleProps}
-                                                                    className="bg-neutral-800 border border-neutral-700 p-3 rounded-lg flex flex-col mb-2 shadow-sm gap-2"
+                                                                    className="bg-slate-50 border border-slate-300 p-3 rounded-lg flex flex-col mb-2 shadow-sm gap-2"
                                                                 >
                                                                     <div className="flex items-center justify-between gap-2">
                                                                         <div className="flex-1 min-w-0">
                                                                             <p className="font-semibold text-sm truncate">{food.name}</p>
                                                                             <div className="flex gap-2 items-center mt-1">
-                                                                                <p className="text-xs font-bold text-white">{(food.kcal * r).toFixed(0)} kcal</p>
-                                                                                <p className="text-[10px] text-pink-400">{(food.p * r).toFixed(1)}p</p>
-                                                                                <p className="text-[10px] text-lime-400">{(food.c * r).toFixed(1)}c</p>
-                                                                                <p className="text-[10px] text-red-400">{(food.f * r).toFixed(1)}g</p>
+                                                                                <p className="text-xs font-bold text-slate-900">{(food.kcal * r).toFixed(0)} kcal</p>
+                                                                                <p className="text-[10px] text-pink-600">{(food.p * r).toFixed(1)}p</p>
+                                                                                <p className="text-[10px] text-red-600">{(food.c * r).toFixed(1)}c</p>
+                                                                                <p className="text-[10px] text-red-600">{(food.f * r).toFixed(1)}g</p>
                                                                             </div>
                                                                         </div>
                                                                         <div className="flex items-center gap-2 shrink-0">
@@ -677,25 +881,36 @@ export default function DietBuilder() {
                                                                                         updateGrams(mealKey, index, raw === '' ? 0 : Number(raw));
                                                                                     }}
                                                                                     onFocus={(e) => e.target.select()}
-                                                                                    className="w-14 bg-neutral-900 border border-neutral-700 rounded px-1 py-1 text-xs text-right focus:outline-none focus:border-lime-400"
+                                                                                    className="w-14 bg-white border border-slate-300 rounded px-1 py-1 text-xs text-right focus:outline-none focus:border-red-400"
                                                                                 />
-                                                                                <span className="text-xs text-neutral-500 ml-1">g</span>
+                                                                                <span className="text-xs text-slate-500 ml-1 mr-2">g</span>
                                                                             </div>
                                                                             <button
+                                                                                type="button"
+                                                                                onClick={() => toggleSwappable(mealKey, index)}
+                                                                                title={food.isSwappable ? "Intercambio permitido" : "Permitir intercambio"}
+                                                                                className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all border ${food.isSwappable
+                                                                                    ? 'bg-red-50 text-red-600 border-red-200 shadow-sm ring-1 ring-red-400/50'
+                                                                                    : 'bg-white text-slate-400 border-slate-200 hover:text-slate-600 hover:bg-slate-50'
+                                                                                    }`}
+                                                                            >
+                                                                                SWAP
+                                                                            </button>
+                                                                            <button
                                                                                 onClick={() => removeFood(mealKey, index)}
-                                                                                className="text-neutral-500 hover:text-red-400 p-1"
+                                                                                className="text-slate-500 hover:text-red-600 p-1"
                                                                             >
                                                                                 <Trash2 size={16} />
                                                                             </button>
                                                                         </div>
                                                                     </div>
                                                                     {/* Dish Selector */}
-                                                                    <div className="flex justify-between items-center border-t border-neutral-700/50 pt-2 mt-1">
-                                                                        <span className="text-[10px] uppercase font-bold text-neutral-500">Plato:</span>
+                                                                    <div className="flex justify-between items-center border-t border-slate-300/50 pt-2 mt-1">
+                                                                        <span className="text-[10px] uppercase font-bold text-slate-500">Plato:</span>
                                                                         <select
                                                                             value={food.dish || ''}
                                                                             onChange={(e) => updateDish(mealKey, index, e.target.value)}
-                                                                            className="bg-neutral-900 border border-neutral-700 rounded text-xs px-2 py-1 text-neutral-300 focus:outline-none focus:border-lime-400 w-32"
+                                                                            className="bg-white border border-slate-300 rounded text-xs px-2 py-1 text-slate-900 focus:outline-none focus:border-red-400 w-32"
                                                                         >
                                                                             <option value="">Ninguno</option>
                                                                             <option value="Entrante">Entrante</option>
@@ -713,7 +928,7 @@ export default function DietBuilder() {
                                                 {provided.placeholder}
 
                                                 {meal.items.length === 0 && !snapshot.isDraggingOver && (
-                                                    <div className="h-full flex items-center justify-center flex-col text-neutral-600 pb-10">
+                                                    <div className="h-full flex items-center justify-center flex-col text-slate-500 pb-10">
                                                         <Plus size={24} className="mb-2 opacity-50" />
                                                         <p className="text-sm font-medium">Arrastra alimentos aquí</p>
                                                     </div>
@@ -729,174 +944,111 @@ export default function DietBuilder() {
                 </div>
             </div>
 
-            {/* Calculadora Nutricional Modal */}
-            {isCalcOpen && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-neutral-900 border border-neutral-800 rounded-3xl shadow-2xl w-full max-w-5xl flex flex-col overflow-hidden text-white">
-                        {/* Header */}
-                        <div className="flex justify-between items-center p-8 border-b border-neutral-800 shrink-0">
+
+            {/* === Hidden per-day print divs === */}
+            {daysOfWeek.map((day) => {
+                const dayMeals = weeklyDiet[day] || initialDailyMeals;
+                let dayKcal = 0, dayP = 0, dayC = 0, dayF = 0;
+                Object.values(dayMeals).forEach(meal => {
+                    meal.items.forEach(item => {
+                        const ratio = (item.grams || 100) / 100;
+                        dayKcal += item.kcal * ratio;
+                        dayP += item.p * ratio;
+                        dayC += item.c * ratio;
+                        dayF += item.f * ratio;
+                    });
+                });
+                return (
+                    <div
+                        key={day}
+                        id={`print-day-${day}`}
+                        style={{
+                            position: 'absolute', top: '-99999px', left: '-99999px',
+                            width: '1050px', backgroundColor: '#ffffff', color: '#111111',
+                            fontFamily: 'sans-serif', padding: '32px', boxSizing: 'border-box',
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid #e5e7eb', paddingBottom: '16px', marginBottom: '20px' }}>
                             <div>
-                                <h2 className="text-3xl font-extrabold text-white mb-1 tracking-tight">Calculadora Energética</h2>
-                                <p className="text-sm text-neutral-400 font-medium">
-                                    Estimación basada en Mifflin-St Jeor para
-                                    <span className="font-bold text-lime-400 ml-1">
-                                        {patients.find(p => p.id.toString() === selectedPatient)?.name || 'Paciente'}
-                                    </span>
-                                </p>
+                                <div style={{ fontSize: '24px', fontWeight: 900, color: '#f87171' }}>
+                                    {patients.find(p => p.id.toString() === selectedPatient)?.name || 'Paciente'}
+                                </div>
+                                <div style={{ fontSize: '13px', color: '#6b7280', fontWeight: 700, marginTop: '4px' }}>Día: {day}</div>
                             </div>
-                            <button onClick={() => setIsCalcOpen(false)} className="text-neutral-500 hover:text-white bg-neutral-800 hover:bg-neutral-700 p-2 rounded-full transition-colors">
-                                <X size={24} />
-                            </button>
+                            <div style={{ fontSize: '16px', fontWeight: 900, color: '#111111' }}>
+                                NOYA<span style={{ color: '#f87171' }}> CENTRE</span>
+                            </div>
                         </div>
-
-                        {/* Body */}
-                        <div className="flex flex-col md:flex-row p-8 gap-8 overflow-y-auto">
-
-                            {/* Left Column: Form */}
-                            <div className="flex-1 space-y-5 bg-neutral-950/50 p-7 rounded-2xl border border-neutral-800">
-                                <div className="grid grid-cols-2 gap-5">
-                                    <div>
-                                        <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Edad</label>
-                                        <input type="number" value={calcData.age || ''}
-                                            onFocus={e => e.target.select()}
-                                            onChange={e => setCalcData({ ...calcData, age: e.target.value === '' ? 0 : Number(e.target.value) })}
-                                            className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Género</label>
-                                        <select value={calcData.gender} onChange={e => setCalcData({ ...calcData, gender: e.target.value as any })} className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium cursor-pointer">
-                                            <option value="Hombre">Hombre</option>
-                                            <option value="Mujer">Mujer</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Peso (kg)</label>
-                                        <input type="number" value={calcData.weight || ''}
-                                            onFocus={e => e.target.select()}
-                                            onChange={e => setCalcData({ ...calcData, weight: e.target.value === '' ? 0 : Number(e.target.value) })}
-                                            className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Altura (cm)</label>
-                                        <input type="number" value={calcData.height || ''}
-                                            onFocus={e => e.target.select()}
-                                            onChange={e => setCalcData({ ...calcData, height: e.target.value === '' ? 0 : Number(e.target.value) })}
-                                            className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium" />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Nivel de Actividad</label>
-                                    <select value={calcData.activity} onChange={e => setCalcData({ ...calcData, activity: Number(e.target.value) })} className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium cursor-pointer">
-                                        <option value={1.2}>Sedentario (Poco o nada de ejercicio)</option>
-                                        <option value={1.375}>Ligero (1-3 días a la semana)</option>
-                                        <option value={1.55}>Moderado (3-5 días a la semana)</option>
-                                        <option value={1.725}>Activo (6-7 días a la semana)</option>
-                                        <option value={1.9}>Muy Activo (2 veces al día)</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-neutral-400 mb-2 uppercase tracking-wider">Objetivo</label>
-                                    <select value={calcData.goal} onChange={e => setCalcData({ ...calcData, goal: Number(e.target.value) })} className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-lime-400 transition-all font-medium cursor-pointer">
-                                        <option value={-0.2}>Pérdida de Peso Acelerada (-20%)</option>
-                                        <option value={-0.1}>Déficit Ligero (-10%)</option>
-                                        <option value={0}>Mantenimiento</option>
-                                        <option value={0.1}>Superávit Ligero (+10%)</option>
-                                        <option value={0.15}>Volumen (+15%)</option>
-                                    </select>
-                                </div>
-
-                                <button
-                                    onClick={() => {
-                                        const carbPercent = 100 - calcData.protPercent - calcData.fatPercent;
-                                        setUserGoals({
-                                            kcal: dailyKcal,
-                                            p: Math.round((dailyKcal * (calcData.protPercent / 100)) / 4),
-                                            f: Math.round((dailyKcal * (calcData.fatPercent / 100)) / 9),
-                                            c: Math.round((dailyKcal * (carbPercent / 100)) / 4),
-                                        });
-                                        setIsCalcOpen(false);
-                                    }}
-                                    className="w-full py-4 rounded-xl bg-lime-400 text-black font-bold text-base hover:bg-lime-300 transition-colors shadow-[0_0_20px_rgba(163,230,53,0.3)] mt-2 active:scale-[0.98]"
-                                >
-                                    Calcular y Actualizar Objetivo
-                                </button>
-                            </div>
-
-                            {/* Right Column: Results & Macros */}
-                            <div className="w-full md:w-96 space-y-5">
-                                {/* Highlight Card */}
-                                <div className="bg-gradient-to-br from-neutral-800 to-neutral-950 p-7 rounded-2xl border border-neutral-700 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-32 h-32 bg-lime-400/10 blur-3xl rounded-full -mr-10 -mt-10"></div>
-                                    <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2 relative z-10">Objetivo Diario</p>
-                                    <div className="flex items-baseline gap-2 relative z-10">
-                                        <span className="text-6xl font-black text-lime-400 tracking-tighter">{dailyKcal}</span>
-                                        <span className="text-xl font-bold text-neutral-400">kcal</span>
-                                    </div>
-                                    <div className="mt-6 pt-5 border-t border-neutral-700/50 flex justify-between relative z-10">
-                                        <div>
-                                            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">TMB</p>
-                                            <p className="text-2xl font-bold text-white">{tmb}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-1">TDEE</p>
-                                            <p className="text-2xl font-bold text-white">{tdee}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Macros Distribution */}
-                                <div className="bg-neutral-950/50 p-6 rounded-2xl border border-neutral-800">
-                                    <div className="flex justify-between items-center mb-5">
-                                        <h3 className="font-bold text-white">Distribución de Macros</h3>
-                                        <div className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg ${calcData.protPercent + calcData.fatPercent <= 100 ? 'text-lime-400 bg-lime-400/10' : 'text-red-400 bg-red-400/10'}`}>
-                                            {calcData.protPercent + calcData.fatPercent + (100 - calcData.protPercent - calcData.fatPercent)}% ✓
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-5">
-                                        <div>
-                                            <div className="flex justify-between text-sm font-bold mb-2">
-                                                <span className="text-pink-400">Proteína (%)</span>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-neutral-400">{Math.round((dailyKcal * (calcData.protPercent / 100)) / 4)}g</span>
-                                                    <span className="bg-pink-400/10 text-pink-400 px-2 py-0.5 rounded-md text-xs border border-pink-400/20">{(((dailyKcal * (calcData.protPercent / 100)) / 4) / (calcData.weight || 1)).toFixed(1)} g/kg</span>
-                                                </div>
-                                            </div>
-                                            <input type="number" min="0" max="100" value={calcData.protPercent || ''}
-                                                onFocus={e => e.target.select()}
-                                                onChange={e => setCalcData({ ...calcData, protPercent: e.target.value === '' ? 0 : Number(e.target.value) })}
-                                                className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-pink-400 font-bold transition-colors" />
-                                        </div>
-
-                                        <div>
-                                            <div className="flex justify-between text-sm font-bold mb-2">
-                                                <span className="text-orange-400">Grasas (%)</span>
-                                                <span className="text-neutral-400">{Math.round((dailyKcal * (calcData.fatPercent / 100)) / 9)}g</span>
-                                            </div>
-                                            <input type="number" min="0" max="100" value={calcData.fatPercent || ''}
-                                                onFocus={e => e.target.select()}
-                                                onChange={e => setCalcData({ ...calcData, fatPercent: e.target.value === '' ? 0 : Number(e.target.value) })}
-                                                className="w-full bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-orange-400 font-bold transition-colors" />
-                                        </div>
-
-                                        <div>
-                                            <div className="flex justify-between text-sm font-bold mb-2">
-                                                <span className="text-lime-400">Carbos (%)</span>
-                                                <span className="text-neutral-400">{Math.round((dailyKcal * ((100 - calcData.protPercent - calcData.fatPercent) / 100)) / 4)}g</span>
-                                            </div>
-                                            <div className="w-full bg-neutral-800 border border-neutral-700 rounded-xl px-4 py-2.5 text-neutral-500 font-bold cursor-not-allowed">
-                                                {100 - calcData.protPercent - calcData.fatPercent}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
+                            {Object.keys(dayMeals).map((mealKey) => {
+                                const meal = dayMeals[mealKey]!;
+                                let mK = 0, mP = 0, mC = 0, mF = 0;
+                                meal.items.forEach(i => { const r = (i.grams || 100) / 100; mK += i.kcal * r; mP += i.p * r; mC += i.c * r; mF += i.f * r; });
+                                return (
+                                    <div key={mealKey} style={{ backgroundColor: '#ffffff', border: '1px solid #e5e7eb', borderRadius: '14px', padding: '14px' }}>
+                                        <div style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: '10px', marginBottom: '10px' }}>
+                                            <div style={{ fontSize: '16px', fontWeight: 800, color: '#f87171' }}>{meal.name}</div>
+                                            {meal.subName && <div style={{ fontSize: '10px', color: '#6b7280', fontStyle: 'italic', marginTop: '2px' }}>{meal.subName}</div>}
+                                            <div style={{ display: 'flex', gap: '8px', marginTop: '4px', fontSize: '11px' }}>
+                                                <span style={{ fontWeight: 700 }}>{mK.toFixed(0)} kcal</span>
+                                                <span style={{ color: '#f472b6' }}>{mP.toFixed(1)}p</span>
+                                                <span style={{ color: '#f87171' }}>{mC.toFixed(1)}c</span>
+                                                <span style={{ color: '#fb923c' }}>{mF.toFixed(1)}g</span>
                                             </div>
                                         </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            {meal.items.map((food, idx) => {
+                                                const r = (food.grams || 100) / 100;
+                                                return (
+                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                        <div style={{ paddingRight: '6px' }}>
+                                                            <div style={{ fontSize: '12px', fontWeight: 700, color: '#111111', lineHeight: 1.3 }}>{food.name}</div>
+                                                            <div style={{ display: 'flex', gap: '6px', fontSize: '10px', marginTop: '2px' }}>
+                                                                <span style={{ fontWeight: 600, color: '#374151' }}>{(food.kcal * r).toFixed(0)} kcal</span>
+                                                                <span style={{ color: '#f472b6' }}>{(food.p * r).toFixed(1)}p</span>
+                                                                <span style={{ color: '#f87171' }}>{(food.c * r).toFixed(1)}c</span>
+                                                                <span style={{ color: '#fb923c' }}>{(food.f * r).toFixed(1)}g</span>
+                                                            </div>
+                                                            {food.dish && <div style={{ fontSize: '9px', color: '#6b7280' }}>Plato: {food.dish}</div>}
+                                                        </div>
+                                                        <div style={{ fontSize: '14px', fontWeight: 900, color: '#dc2626', flexShrink: 0 }}>{food.grams || 100}g</div>
+                                                    </div>
+                                                );
+                                            })}
+                                            {meal.items.length === 0 && <div style={{ fontSize: '11px', color: '#525252', fontStyle: 'italic' }}>Sin alimentos.</div>}
+                                        </div>
                                     </div>
-                                </div>
+                                );
+                            })}
+                        </div>
+                        <div style={{ marginTop: '18px', borderTop: '1px solid #e5e7eb', paddingTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: '24px', backgroundColor: '#ffffff', padding: '10px 20px', borderRadius: '10px', border: '1px solid #e5e7eb' }}>
+                                {[['KCAL TOTAL', '#a3a3a3', dayKcal.toFixed(0)], ['PROTEÍNA', '#dc2626', dayP.toFixed(0) + 'g'], ['CARBOS', '#3b82f6', dayC.toFixed(0) + 'g'], ['GRASAS', '#fb923c', dayF.toFixed(0) + 'g']].map(([label, color, val]) => (
+                                    <div key={label as string} style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '8px', fontWeight: 700, color: color as string, marginBottom: '2px', letterSpacing: '0.05em' }}>{label}</div>
+                                        <div style={{ fontSize: '18px', fontWeight: 900, color: '#111111' }}>{val}</div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })}
+            {daysOfWeek.map((day, dayIndex) => {
+                const dayMeals = weeklyDiet[day] || initialDailyMeals;
+                let dayKcal = 0, dayP = 0, dayC = 0, dayF = 0;
+                Object.values(dayMeals).forEach(meal => {
+                    meal.items.forEach(item => {
+                        const ratio = (item.grams || 100) / 100;
+                        dayKcal += item.kcal * ratio;
+                        dayP += item.p * ratio;
+                        dayC += item.c * ratio;
+                        dayF += item.f * ratio;
+                    });
+                });
+
+                return null; // Rendered by the new per-day print divs above
+            })}
 
         </DragDropContext>
     );

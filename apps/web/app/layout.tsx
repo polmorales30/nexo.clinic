@@ -13,9 +13,26 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
 });
 
+export const viewport = {
+  themeColor: "#ffffff",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
 export const metadata: Metadata = {
-  title: "NEXO.Clinic Admin",
-  description: "Panel de administración",
+  title: "NEXO Admin",
+  description: "Panel de administración y Portal del Paciente",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "NEXO",
+  },
+  applicationName: "NEXO",
+  icons: {
+    apple: "/android-chrome-192x192.png",
+  },
 };
 
 export default function RootLayout({

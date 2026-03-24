@@ -10,6 +10,9 @@ import { StripeModule } from './stripe/stripe.module';
 import { FoodModule } from './food/food.module';
 import { AiModule } from './ai/ai.module';
 import { DietModule } from './diet/diet.module';
+import { ShoppingListModule } from './shopping-list/shopping-list.module';
+import { RecipeModule } from './recipe/recipe.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -18,12 +21,15 @@ import { DietModule } from './diet/diet.module';
     MetricModule,
     PrismaModule,
     AppointmentModule,
+    ShoppingListModule,
     StripeModule,
     FoodModule,
     AiModule,
     DietModule,
+    RecipeModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

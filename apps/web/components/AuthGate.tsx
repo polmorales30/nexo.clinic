@@ -17,12 +17,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+            <div className="min-h-screen bg-white flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-lime-400 flex items-center justify-center font-black text-black text-2xl animate-pulse">
+                    <div className="w-12 h-12 rounded-xl bg-red-600 flex items-center justify-center font-black text-black text-2xl animate-pulse">
                         N
                     </div>
-                    <div className="w-5 h-5 border-2 border-lime-400/30 border-t-lime-400 rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
                 </div>
             </div>
         );
